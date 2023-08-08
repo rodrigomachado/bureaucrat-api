@@ -1,31 +1,60 @@
 import cors from 'cors'
+import 'dotenv/config'
 import express from 'express'
-import { GraphQLObjectType, GraphQLSchema, GraphQLString } from 'graphql'
+import {
+  GraphQLInt, GraphQLList, GraphQLObjectType, GraphQLSchema, GraphQLString,
+} from 'graphql'
 import { createHandler } from 'graphql-http/lib/use/express'
 
-const app = express()
-const port = 4000
+import Database from './db'
 
-app.use(cors())
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+main()
 
-app.all('/api', createHandler({ schema: schema() }))
+async function main() {
+  try {
+    const db = new Database()
+    const app = express()
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`)
-})
+    app.use(cors())
+    app.use(express.json())
+    app.use(express.urlencoded({ extended: true }))
 
-function schema(): GraphQLSchema {
-  return new GraphQLSchema({
-    query: new GraphQLObjectType({
-      name: 'Query',
-      fields: {
-        hello: {
-          type: GraphQLString,
-          resolve: () => 'Hello GraphQL!!',
-        },
-      },
-    }),
+    app.all('/api', createHandler({ schema: schema(db) }))
+
+    const port = process.env.PORT
+    app.listen(port, () => {
+      console.log(`API running at http://localhost:${port}/api`)
+    })
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+/**
+ * Creates the GraphQL schema.
+ */
+function schema(db: Database): GraphQLSchema {
+  // TODO: Decouple from the Authorization niche.
+  const user = new GraphQLObjectType({
+    name: 'User',
+    fields: {
+      id: { type: GraphQLInt },
+      first_name: { type: GraphQLString },
+      middle_name: { type: GraphQLString },
+      last_name: { type: GraphQLString },
+      birth_date: { type: GraphQLString },
+    },
   })
+
+  const query = new GraphQLObjectType({
+    name: 'Query',
+    fields: {
+      users: {
+        type: new GraphQLList(user),
+        resolve: () => db.users(),
+      },
+    },
+  })
+
+  return new GraphQLSchema({ query })
 }
