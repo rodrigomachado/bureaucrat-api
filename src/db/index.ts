@@ -1,4 +1,5 @@
 import sqlite3 from 'sqlite3'
+import { toCamelCaseFields } from '../jsext/objects'
 
 // TODO: Convert this module into an Authorization Example Data Souce.
 //
@@ -13,10 +14,10 @@ import sqlite3 from 'sqlite3'
 
 export type User = {
   id: number
-  first_name: string
-  middle_name: string
-  last_name: string
-  birth_date: string
+  firstName: string
+  middleName: string
+  lastName: string
+  birthDate: string
 }
 
 export default class Database {
@@ -25,20 +26,15 @@ export default class Database {
   async users(): Promise<User[]> {
     const db = await this.db()
     const users: any[] = await new Promise((res, rej) => {
+      // TODO: Promisify sqlite3
       db.all('SELECT * FROM users', (err, rows) => {
         if (err) rej(err)
         res(rows)
       })
     })
 
-    // TODO enforce types. ZOD?
-    return users.map(rawUser => ({
-      id: rawUser.id,
-      first_name: rawUser.first_name,
-      middle_name: rawUser.middle_name,
-      last_name: rawUser.last_name,
-      birth_date: rawUser.birth_date,
-    }))
+    // TODO: Parse/validate User shape?
+    return users.map(u => toCamelCaseFields(u) as User)
   }
 
   /**

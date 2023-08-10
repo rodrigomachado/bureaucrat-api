@@ -39,10 +39,10 @@ function schema(db: Database): GraphQLSchema {
     name: 'User',
     fields: {
       id: { type: GraphQLInt },
-      first_name: { type: GraphQLString },
-      middle_name: { type: GraphQLString },
-      last_name: { type: GraphQLString },
-      birth_date: { type: GraphQLString },
+      firstName: { type: GraphQLString },
+      middleName: { type: GraphQLString },
+      lastName: { type: GraphQLString },
+      birthDate: { type: GraphQLString },
     },
   })
 
