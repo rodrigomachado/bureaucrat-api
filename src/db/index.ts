@@ -1,5 +1,6 @@
 import sqlite3 from 'sqlite3'
 import { toCamelCaseFields } from '../jsext/objects'
+import { threadId } from 'worker_threads'
 
 // TODO: Convert this module into an Authorization Example Data Souce.
 //
@@ -21,7 +22,7 @@ export type User = {
 }
 
 export default class Database {
-  private _db?: sqlite3.Database
+  private _db?: Promise<sqlite3.Database>
 
   async users(): Promise<User[]> {
     const db = await this.db()
@@ -42,17 +43,21 @@ export default class Database {
    * It also creates the schema and populates the data.
    */
   private async db(): Promise<sqlite3.Database> {
-    if (this._db) return Promise.resolve(this._db)
+    if (this._db) return this._db
 
-    this._db = await new Promise<sqlite3.Database>((res, rej) => {
-      const db = new sqlite3.Database(':memory:', err => {
-        if (err) rej(err)
-        res(db)
+    this._db = (async () => {
+      const db = await new Promise<sqlite3.Database>((res, rej) => {
+        const db = new sqlite3.Database(':memory:', err => {
+          if (err) rej(err)
+          res(db)
+        })
       })
-    })
 
-    await create_schema(this._db)
-    await populate_data(this._db)
+      await create_schema(db)
+      await populate_data(db)
+
+      return db
+    })()
 
     return this._db
   }
