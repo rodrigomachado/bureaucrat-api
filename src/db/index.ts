@@ -93,6 +93,7 @@ async function populate_data(db: sqlite3.Database) {
     })
   })
 
+  await addUser('Douglas', 'Noël', 'Adams', '1767-07-11')
   await addUser('John', 'Quincy', 'Adams', '1767-07-11')
   await addUser('George', '', 'Washington', '1732-02-22')
   await addUser('Thomas', '', 'Jefferson', '1743-04-13')
