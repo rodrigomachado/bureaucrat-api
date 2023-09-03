@@ -1,6 +1,5 @@
-import sqlite3 from 'sqlite3'
+import * as sql3 from './sqlite3.promises'
 import { toCamelCaseFields } from '../jsext/objects'
-import { threadId } from 'worker_threads'
 
 // TODO: Convert this module into an Authorization Example Data Souce.
 //
@@ -22,17 +21,11 @@ export type User = {
 }
 
 export default class Database {
-  private _db?: Promise<sqlite3.Database>
+  private _db?: Promise<sql3.Database>
 
   async users(): Promise<User[]> {
     const db = await this.db()
-    const users: any[] = await new Promise((res, rej) => {
-      // TODO: Promisify sqlite3
-      db.all('SELECT * FROM users', (err, rows) => {
-        if (err) rej(err)
-        res(rows)
-      })
-    })
+    const users = await db.all('SELECT * FROM users')
 
     // TODO: Parse/validate User shape?
     return users.map(u => toCamelCaseFields(u) as User)
@@ -42,20 +35,13 @@ export default class Database {
    * Lazy loads the database connection.
    * It also creates the schema and populates the data.
    */
-  private async db(): Promise<sqlite3.Database> {
+  private async db(): Promise<sql3.Database> {
     if (this._db) return this._db
 
     this._db = (async () => {
-      const db = await new Promise<sqlite3.Database>((res, rej) => {
-        const db = new sqlite3.Database(':memory:', err => {
-          if (err) rej(err)
-          res(db)
-        })
-      })
-
+      const db = await sql3.Database.connect(':memory:')
       await create_schema(db)
       await populate_data(db)
-
       return db
     })()
 
@@ -63,36 +49,27 @@ export default class Database {
   }
 }
 
-async function create_schema(db: sqlite3.Database): Promise<void> {
-  return new Promise((res, rej) => {
-    db.run(`
-      CREATE TABLE users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        first_name TEXT,
-        middle_name TEXT,
-        last_name TEXT,
-        birth_date TEXT
-      )
-    `, err => {
-      if (err) rej(err)
-      res()
-    })
-  })
+async function create_schema(db: sql3.Database): Promise<void> {
+  await db.run(`
+    CREATE TABLE users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      first_name TEXT,
+      middle_name TEXT,
+      last_name TEXT,
+      birth_date TEXT
+    )
+  `)
 }
 
-async function populate_data(db: sqlite3.Database) {
-  const addUser = (
+async function populate_data(db: sql3.Database) {
+  const addUser = async (
     firstName: string, middleName: string, lastName: string, birthDate: string
-  ) => new Promise<void>((res, rej) => {
-    db.run(`
+  ) => (
+    await db.run(`
       INSERT INTO users (first_name, middle_name, last_name, birth_date)
       VALUES (?, ?, ?, ?)
-    `, [firstName, middleName, lastName, birthDate], err => {
-      if (err) rej(err)
-      res()
-    })
-  })
-
+    `, [firstName, middleName, lastName, birthDate])
+  )
   await addUser('Douglas', 'Noël', 'Adams', '1767-07-11')
   await addUser('John', 'Quincy', 'Adams', '1767-07-11')
   await addUser('George', '', 'Washington', '1732-02-22')
