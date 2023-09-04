@@ -2,9 +2,11 @@ import cors from 'cors'
 import 'dotenv/config'
 import express from 'express'
 import {
-  GraphQLInt, GraphQLList, GraphQLObjectType, GraphQLSchema, GraphQLString,
+  GraphQLEnumType,
+  GraphQLList, GraphQLObjectType, GraphQLSchema, GraphQLString,
 } from 'graphql'
 import { createHandler } from 'graphql-http/lib/use/express'
+import { GraphQLJSONObject } from 'graphql-type-json'
 
 import Database from './db'
 
@@ -34,27 +36,62 @@ async function main() {
  * Creates the GraphQL schema.
  */
 function schema(db: Database): GraphQLSchema {
-  // TODO: Decouple from the Authorization niche.
-  const user = new GraphQLObjectType({
-    name: 'User',
-    fields: {
-      id: { type: GraphQLInt },
-      firstName: { type: GraphQLString },
-      middleName: { type: GraphQLString },
-      lastName: { type: GraphQLString },
-      birthDate: { type: GraphQLString },
+  // TODO GQL documentation (descriptions)
+
+  const gqlFieldType = new GraphQLEnumType({
+    name: 'FieldType',
+    values: {
+      STRING: { value: 'string' },
+      NUMBER: { value: 'number' },
+      DATE: { value: 'date' },
+      DATE_TIME: { value: 'datetime' },
+      TIME: { value: 'time' },
     },
   })
+  const gqlFieldMeta = new GraphQLObjectType({
+    name: 'FieldMeta',
+    // TODO Chager to { [fieldName]: FieldConfig } type?
+    fields: {
+      name: { type: GraphQLString },
+      type: { type: gqlFieldType },
+    },
+  })
+  const gqlEntityMeta = new GraphQLObjectType({
+    name: 'EntityMeta',
+    fields: {
+      name: { type: GraphQLString },
+      fields: { type: new GraphQLList(gqlFieldMeta) },
+    }
+  })
 
-  const query = new GraphQLObjectType({
+  const gqlQuery = new GraphQLObjectType({
     name: 'Query',
     fields: {
-      users: {
-        type: new GraphQLList(user),
+      entityTypes: {
+        type: new GraphQLList(gqlEntityMeta),
+        // TODO Inspect DB for entities
+        resolve: () => ([{
+          name: 'User',
+          fields: [
+            // TODO Represent field types with a TS Enum
+            { name: 'id', type: 'number' },
+            { name: 'firstName', type: 'string' },
+            { name: 'middleName', type: 'string' },
+            { name: 'lastName', type: 'string' },
+            { name: 'birthDate', type: 'date' },
+          ]
+        }])
+      },
+      entities: {
+        type: new GraphQLList(GraphQLJSONObject),
+        args: {
+          entityType: { type: GraphQLString },
+        },
+        // TODO Decouple from Example Data Domain
         resolve: () => db.users(),
       },
     },
   })
 
-  return new GraphQLSchema({ query })
+  return new GraphQLSchema({ query: gqlQuery })
 }
