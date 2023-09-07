@@ -60,6 +60,7 @@ function schema(db: Database): GraphQLSchema {
     name: 'EntityMeta',
     fields: {
       name: { type: GraphQLString },
+      identifierFieldName: { type: GraphQLString },
       fields: { type: new GraphQLList(gqlFieldMeta) },
     }
   })
@@ -72,6 +73,7 @@ function schema(db: Database): GraphQLSchema {
         // TODO Inspect DB for entities
         resolve: () => ([{
           name: 'User',
+          identifierFieldName: 'id',
           fields: [
             // TODO Represent field types with a TS Enum
             { name: 'id', type: 'number' },
