@@ -56,11 +56,19 @@ function schema(db: Database): GraphQLSchema {
       type: { type: gqlFieldType },
     },
   })
+  const gqlEntityTitleFormat = new GraphQLObjectType({
+    name: 'EntityTitleFormat',
+    fields: {
+      title: { type: new GraphQLList(GraphQLString) },
+      subtitle: { type: new GraphQLList(GraphQLString) },
+    },
+  })
   const gqlEntityMeta = new GraphQLObjectType({
     name: 'EntityMeta',
     fields: {
       name: { type: GraphQLString },
       identifierFieldName: { type: GraphQLString },
+      titleFormat: { type: gqlEntityTitleFormat },
       fields: { type: new GraphQLList(gqlFieldMeta) },
     }
   })
@@ -74,6 +82,10 @@ function schema(db: Database): GraphQLSchema {
         resolve: () => ([{
           name: 'User',
           identifierFieldName: 'id',
+          titleFormat: {
+            title: ['firstName', 'lastName'],
+            subtitle: ['firstName', 'middleName', 'lastName'],
+          },
           fields: [
             // TODO Represent field types with a TS Enum
             { name: 'id', type: 'number' },
