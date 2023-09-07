@@ -50,7 +50,7 @@ function schema(db: Database): GraphQLSchema {
   })
   const gqlFieldMeta = new GraphQLObjectType({
     name: 'FieldMeta',
-    // TODO Chager to { [fieldName]: FieldConfig } type?
+    // TODO Change to { [fieldName]: FieldConfig } type?
     fields: {
       name: { type: GraphQLString },
       type: { type: gqlFieldType },
