@@ -2,7 +2,7 @@ import cors from 'cors'
 import 'dotenv/config'
 import express from 'express'
 import {
-  GraphQLEnumType,
+  GraphQLBoolean, GraphQLEnumType, GraphQLInt,
   GraphQLList, GraphQLObjectType, GraphQLSchema, GraphQLString,
 } from 'graphql'
 import { createHandler } from 'graphql-http/lib/use/express'
@@ -52,8 +52,12 @@ function schema(db: Database): GraphQLSchema {
     name: 'FieldMeta',
     // TODO Change to { [fieldName]: FieldConfig } type?
     fields: {
+      id: { type: GraphQLInt },
       name: { type: GraphQLString },
+      displayName: { type: GraphQLString },
+      placeholder: { type: GraphQLString },
       type: { type: gqlFieldType },
+      hidden: { type: GraphQLBoolean },
     },
   })
   const gqlEntityTitleFormat = new GraphQLObjectType({
@@ -88,11 +92,11 @@ function schema(db: Database): GraphQLSchema {
           },
           fields: [
             // TODO Represent field types with a TS Enum
-            { name: 'id', type: 'number' },
-            { name: 'firstName', type: 'string' },
-            { name: 'middleName', type: 'string' },
-            { name: 'lastName', type: 'string' },
-            { name: 'birthDate', type: 'date' },
+            newUser(0, 'id', 'number', true),
+            newUser(1, 'firstName', 'string', false, 'First Name', 'Douglas'),
+            newUser(2, 'middleName', 'string', false, 'Middle Name', 'Noël'),
+            newUser(3, 'lastName', 'string', false, 'Last Name', 'Adams'),
+            newUser(4, 'birthDate', 'date', false, 'Birth Date', '1952-03-11'),
           ]
         }])
       },
@@ -106,6 +110,11 @@ function schema(db: Database): GraphQLSchema {
       },
     },
   })
+  function newUser(
+    id: number, name: string, type: string, hidden: boolean, displayName?: string, placeholder?: string,
+  ) {
+    return { id, name, type, hidden, displayName, placeholder }
+  }
 
   return new GraphQLSchema({ query: gqlQuery })
 }

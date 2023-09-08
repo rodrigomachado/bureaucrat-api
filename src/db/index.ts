@@ -1,7 +1,7 @@
 import * as sql3 from './sqlite3.promises'
 import { toCamelCaseFields } from '../jsext/objects'
 
-// TODO: Convert this module into an Authorization Example Data Souce.
+// TODO: Extract from this module an Authorization Example Data Domain.
 //
 // This data source should be useful for development: an easy and disposable
 // database to rapidly get the app running in a new dev env. It should also be
@@ -71,7 +71,8 @@ async function populate_data(db: sql3.Database) {
     `, [firstName, middleName, lastName, birthDate])
   )
   await addUser('Douglas', 'Noël', 'Adams', '1767-07-11')
-  await addUser('John', 'Quincy', 'Adams', '1767-07-11')
-  await addUser('George', '', 'Washington', '1732-02-22')
-  await addUser('Thomas', '', 'Jefferson', '1743-04-13')
+  await addUser('John', 'Marwood', 'Cleese', '1939-10-27')
+  await addUser('Rowan', 'Sebastian', 'Atkinson', '1955-01-06')
+  await addUser('Isaac', '', 'Asimov', '1920-01-02')
+  await addUser('Mary', 'Wollstonecraft', 'Shelley', '1797-08-30')
 }
