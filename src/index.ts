@@ -70,6 +70,7 @@ function schema(db: Database): GraphQLSchema {
   const gqlEntityMeta = new GraphQLObjectType({
     name: 'EntityMeta',
     fields: {
+      id: { type: GraphQLInt },
       name: { type: GraphQLString },
       identifierFieldName: { type: GraphQLString },
       titleFormat: { type: gqlEntityTitleFormat },
@@ -84,6 +85,7 @@ function schema(db: Database): GraphQLSchema {
         type: new GraphQLList(gqlEntityMeta),
         // TODO Inspect DB for entities
         resolve: () => ([{
+          id: 0,
           name: 'User',
           identifierFieldName: 'id',
           titleFormat: {
@@ -92,12 +94,25 @@ function schema(db: Database): GraphQLSchema {
           },
           fields: [
             // TODO Represent field types with a TS Enum
-            newUser(0, 'id', 'number', true),
-            newUser(1, 'firstName', 'string', false, 'First Name', 'Douglas'),
-            newUser(2, 'middleName', 'string', false, 'Middle Name', 'Noël'),
-            newUser(3, 'lastName', 'string', false, 'Last Name', 'Adams'),
-            newUser(4, 'birthDate', 'date', false, 'Birth Date', '1952-03-11'),
+            newField(0, 'id', 'number', true),
+            newField(1, 'firstName', 'string', false, 'First Name', 'Douglas'),
+            newField(2, 'middleName', 'string', false, 'Middle Name', 'Noël'),
+            newField(3, 'lastName', 'string', false, 'Last Name', 'Adams'),
+            newField(4, 'birthDate', 'date', false, 'Birth Date', '1952-03-11'),
           ]
+        }, {
+          id: 1,
+          name: 'Feature',
+          identifierFieldName: 'id',
+          titleFormat: {
+            title: ['name'],
+            subtitle: ['path', 'name'],
+          },
+          fields: [
+            newField(0, 'id', 'number', true),
+            newField(1, 'name', 'string', false, 'Name', 'CreateUser'),
+            newField(2, 'path', 'string', false, 'Path', 'user'),
+          ],
         }])
       },
       entities: {
@@ -106,11 +121,17 @@ function schema(db: Database): GraphQLSchema {
           entityType: { type: GraphQLString },
         },
         // TODO Decouple from Example Data Domain
-        resolve: () => db.users(),
+        resolve(source, { entityType }) {
+          switch (entityType) {
+            case 'User': return db.users()
+            case 'Feature': return db.features()
+          }
+          throw new Error(`Unknown entity type '${entityType}`)
+        },
       },
     },
   })
-  function newUser(
+  function newField(
     id: number, name: string, type: string, hidden: boolean, displayName?: string, placeholder?: string,
   ) {
     return { id, name, type, hidden, displayName, placeholder }
