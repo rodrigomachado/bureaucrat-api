@@ -123,6 +123,8 @@ function schema(db: Database): GraphQLSchema {
         // TODO Decouple from Example Data Domain
         resolve(source, { entityType }) {
           switch (entityType) {
+            // TODO Translate internal errors
+            // Implementation details should not be exposed in the GraphQL interface
             case 'User': return db.users()
             case 'Feature': return db.features()
           }

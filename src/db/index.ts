@@ -1,4 +1,5 @@
 import * as sql3 from './sqlite3.promises'
+import { populateDB } from '../exampleDataDomain'
 import { toCamelCaseFields } from '../jsext/objects'
 
 // TODO: Extract from this module an Authorization Example Data Domain.
@@ -12,33 +13,19 @@ import { toCamelCaseFields } from '../jsext/objects'
 // GraphQL API, or anything mappable in some way to the DataSource
 // interface (yet to be defined).
 
-export type User = {
-  id: number,
-  firstName: string,
-  middleName: string,
-  lastName: string,
-  birthDate: string,
-}
-
-export type Feature = {
-  id: number,
-  name: string,
-  path: string,
-}
-
 export default class Database {
   private _db?: Promise<sql3.Database>
 
-  async users(): Promise<User[]> {
+  async users(): Promise<any[]> {
     const db = await this.db()
     const users = await db.all('SELECT * FROM users')
-    return users.map(u => toCamelCaseFields(u) as User)
+    return users.map(u => toCamelCaseFields(u))
   }
 
-  async features(): Promise<Feature[]> {
+  async features(): Promise<any[]> {
     const db = await this.db()
     const features = await db.all('SELECT * FROM features')
-    return features.map(f => toCamelCaseFields(f) as Feature)
+    return features.map(f => toCamelCaseFields(f))
   }
 
   /**
@@ -50,57 +37,10 @@ export default class Database {
 
     this._db = (async () => {
       const db = await sql3.Database.connect(':memory:')
-      await create_schema(db)
-      await populate_data(db)
+      await populateDB(db)
       return db
     })()
 
     return this._db
   }
-}
-
-async function create_schema(db: sql3.Database): Promise<void> {
-  await db.run(`
-    CREATE TABLE users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      first_name TEXT,
-      middle_name TEXT,
-      last_name TEXT,
-      birth_date TEXT
-    )
-  `)
-  await db.run(`
-    CREATE TABLE features (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT,
-      path TEXT
-    )
-  `)
-}
-
-async function populate_data(db: sql3.Database) {
-  const addUser = async (
-    firstName: string, middleName: string, lastName: string, birthDate: string
-  ) => (
-    await db.run(`
-      INSERT INTO users (first_name, middle_name, last_name, birth_date)
-      VALUES (?, ?, ?, ?)
-    `, [firstName, middleName, lastName, birthDate])
-  )
-  await addUser('Douglas', 'Noël', 'Adams', '1767-07-11')
-  await addUser('John', 'Marwood', 'Cleese', '1939-10-27')
-  await addUser('Rowan', 'Sebastian', 'Atkinson', '1955-01-06')
-  await addUser('Isaac', '', 'Asimov', '1920-01-02')
-  await addUser('Mary', 'Wollstonecraft', 'Shelley', '1797-08-30')
-
-  const addFeature = async (name: string, path: string) => (
-    await db.run(`
-      INSERT INTO features (name, path)
-      VALUES (?,?)
-    `, [name, path])
-  )
-  await addFeature('CreateUser', 'user')
-  await addFeature('ReadUser', 'user')
-  await addFeature('UpdateUser', 'user')
-  await addFeature('DeleteUser', 'user')
 }
