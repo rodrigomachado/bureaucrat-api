@@ -41,11 +41,11 @@ function schema(db: Database): GraphQLSchema {
   const gqlFieldType = new GraphQLEnumType({
     name: 'FieldType',
     values: {
-      STRING: { value: 'string' },
-      NUMBER: { value: 'number' },
-      DATE: { value: 'date' },
-      DATE_TIME: { value: 'datetime' },
-      TIME: { value: 'time' },
+      string: { value: 'string' },
+      number: { value: 'number' },
+      date: { value: 'date' },
+      datetime: { value: 'datetime' },
+      time: { value: 'time' },
     },
   })
   const gqlFieldMeta = new GraphQLObjectType({
@@ -54,17 +54,18 @@ function schema(db: Database): GraphQLSchema {
     fields: {
       id: { type: GraphQLInt },
       name: { type: GraphQLString },
-      displayName: { type: GraphQLString },
+      code: { type: GraphQLString },
       placeholder: { type: GraphQLString },
       type: { type: gqlFieldType },
+      identifier: { type: GraphQLBoolean },
       hidden: { type: GraphQLBoolean },
     },
   })
   const gqlEntityTitleFormat = new GraphQLObjectType({
     name: 'EntityTitleFormat',
     fields: {
-      title: { type: new GraphQLList(GraphQLString) },
-      subtitle: { type: new GraphQLList(GraphQLString) },
+      title: { type: GraphQLString },
+      subtitle: { type: GraphQLString },
     },
   })
   const gqlEntityMeta = new GraphQLObjectType({
@@ -72,7 +73,7 @@ function schema(db: Database): GraphQLSchema {
     fields: {
       id: { type: GraphQLInt },
       name: { type: GraphQLString },
-      identifierFieldName: { type: GraphQLString },
+      code: { type: GraphQLString },
       titleFormat: { type: gqlEntityTitleFormat },
       fields: { type: new GraphQLList(gqlFieldMeta) },
     }
@@ -84,36 +85,13 @@ function schema(db: Database): GraphQLSchema {
       entityTypes: {
         type: new GraphQLList(gqlEntityMeta),
         // TODO Inspect DB for entities
-        resolve: () => ([{
-          id: 0,
-          name: 'User',
-          identifierFieldName: 'id',
-          titleFormat: {
-            title: ['firstName', 'lastName'],
-            subtitle: ['firstName', 'middleName', 'lastName'],
-          },
-          fields: [
-            // TODO Represent field types with a TS Enum
-            newField(0, 'id', 'number', true),
-            newField(1, 'firstName', 'string', false, 'First Name', 'Douglas'),
-            newField(2, 'middleName', 'string', false, 'Middle Name', 'Noël'),
-            newField(3, 'lastName', 'string', false, 'Last Name', 'Adams'),
-            newField(4, 'birthDate', 'date', false, 'Birth Date', '1952-03-11'),
-          ]
-        }, {
-          id: 1,
-          name: 'Feature',
-          identifierFieldName: 'id',
-          titleFormat: {
-            title: ['name'],
-            subtitle: ['path', 'name'],
-          },
-          fields: [
-            newField(0, 'id', 'number', true),
-            newField(1, 'name', 'string', false, 'Name', 'CreateUser'),
-            newField(2, 'path', 'string', false, 'Path', 'user'),
-          ],
-        }])
+        resolve: async () => {
+          const entityTypes: any = await db.entityTypes()
+          for (const et of entityTypes) {
+            et.fields = Object.values(et.fields)
+          }
+          return entityTypes
+        }
       },
       entities: {
         type: new GraphQLList(GraphQLJSONObject),
@@ -123,21 +101,16 @@ function schema(db: Database): GraphQLSchema {
         // TODO Decouple from Example Data Domain
         resolve(source, { entityType }) {
           switch (entityType) {
-            // TODO Translate internal errors
+            // TODO Report and translate internal errors
             // Implementation details should not be exposed in the GraphQL interface
-            case 'User': return db.users()
-            case 'Feature': return db.features()
+            case 'users': return db.users()
+            case 'features': return db.features()
           }
-          throw new Error(`Unknown entity type '${entityType}`)
+          throw new Error(`Unknown entity type '${entityType}'`)
         },
       },
     },
   })
-  function newField(
-    id: number, name: string, type: string, hidden: boolean, displayName?: string, placeholder?: string,
-  ) {
-    return { id, name, type, hidden, displayName, placeholder }
-  }
 
   return new GraphQLSchema({ query: gqlQuery })
 }

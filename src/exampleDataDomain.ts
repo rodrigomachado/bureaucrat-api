@@ -8,7 +8,7 @@ import * as sql3 from './db/sqlite3.promises'
 export async function populateDB(db: sql3.Database): Promise<void> {
   if (process.env.CREATE_EXAMPLE_DATA_DOMAIN !== 'TRUE') return
 
-  const tables = await listAllTables(db)
+  const tables = await db.listAllTables()
   const createTable = async (name: string, fn: (db: sql3.Database) => Promise<void>) => {
     if (tables.includes(name)) return
     await fn(db)
@@ -18,7 +18,7 @@ export async function populateDB(db: sql3.Database): Promise<void> {
   await createTable('users', createUsers)
   await createTable('features', createFeatures)
 
-  log(`Tables: ${await listAllTables(db)}`)
+  log(`Tables: ${await db.listAllTables()}`)
 }
 
 async function createUsers(db: sql3.Database): Promise<void> {
@@ -66,9 +66,4 @@ async function createFeatures(db: sql3.Database): Promise<void> {
   await addFeature('ReadUser', 'user')
   await addFeature('UpdateUser', 'user')
   await addFeature('DeleteUser', 'user')
-}
-
-async function listAllTables(db: sql3.Database): Promise<string[]> {
-  const tables: any[] = await db.all('SELECT name FROM sqlite_master WHERE type=\'table\'')
-  return tables.map(x => x.name)
 }

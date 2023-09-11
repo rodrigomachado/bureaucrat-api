@@ -21,9 +21,15 @@ export class Database {
     this.inner = db
   }
 
-  async all(sql: string): Promise<unknown[]> {
+  async listAllTables(): Promise<string[]> {
+    const tables: any[] = await this.all('SELECT name FROM sqlite_master WHERE type=\'table\'')
+    return tables.map(x => x.name)
+  }
+
+
+  async all(sql: string, params?: any): Promise<unknown[]> {
     return new Promise((res, rej) => {
-      this.inner.all(sql, (err, rows) => {
+      this.inner.all(sql, params, (err, rows) => {
         if (err) return rej(err)
         res(rows)
       })
