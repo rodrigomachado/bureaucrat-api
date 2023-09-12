@@ -1,13 +1,22 @@
 import { log } from 'console'
 import * as sql3 from './db/sqlite3.promises'
 
+// This data domain should be useful for development: an easy and disposable
+// database to rapidly get the app running in a new dev env. It should also be
+// useful for testing and complete (exemplify all the features that a
+// Data Domain cam present).
+//
+// In the context of the Bureaucrat app, data sources are manageable CRUD
+// interfaces (or CRUD like), such as a SQL database, a REST API, a
+// GraphQL API, or anything mappable in some way to the DataSource
+// interface (yet to be defined).
+
+
 /**
  * Creates and populates the Authorization Data Domain example database.
  * It only creates and populates tables if they're absent.
  */
 export async function populateDB(db: sql3.Database): Promise<void> {
-  if (process.env.CREATE_EXAMPLE_DATA_DOMAIN !== 'TRUE') return
-
   const tables = await db.listAllTables()
   const createTable = async (name: string, fn: (db: sql3.Database) => Promise<void>) => {
     if (tables.includes(name)) return

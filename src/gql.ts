@@ -71,16 +71,9 @@ export function schema(db: Database): GraphQLSchema {
         args: {
           entityType: { type: GraphQLString },
         },
-        // TODO Decouple from Example Data Domain
-        resolve(source, { entityType }) {
-          switch (entityType) {
-            // TODO Report and translate internal errors
-            // Implementation details should not be exposed in the GraphQL interface
-            case 'users': return db.users()
-            case 'features': return db.features()
-          }
-          throw new Error(`Unknown entity type '${entityType}'`)
-        },
+        // TODO Report and translate internal errors
+        // Implementation details should not be exposed in the GraphQL interface
+        resolve: (source, { entityType }) => db.read(entityType),
       },
     },
   })

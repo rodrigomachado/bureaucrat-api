@@ -3,17 +3,6 @@ import { populateDB } from '../exampleDataDomain'
 import { log } from 'console'
 import { toCapitalizedSpaced } from '../jsext/strings'
 
-// TODO WIP Extract from this module an Authorization Example Data Domain.
-//
-// This data source should be useful for development: an easy and disposable
-// database to rapidly get the app running in a new dev env. It should also be
-// useful for testing.
-//
-// In the context of the Bureaucrat app, data sources are manageable CRUD
-// interfaces (or CRUD like), such as a SQL database, a REST API, a
-// GraphQL API, or anything mappable in some way to the DataSource
-// interface (yet to be defined).
-
 export type EntityMeta = {
   id: number,
   name: string,
@@ -111,16 +100,25 @@ export class Database {
     return entityTypes
   }
 
-  async users(): Promise<any[]> {
+  /**
+   * Reads all entries for a particular entity type.
+   */
+  async read(entityTypeCode: string): Promise<any[]> {
+    const entityTypes = await this.entityTypes()
+    const [entityType] = entityTypes.filter(et => et.code === entityTypeCode)
+    if (!entityType) throw new Error(`No entity type found for code '${entityTypeCode}'`)
     const db = await this.domainDB()
-    return await db.all('SELECT * FROM users')
+    // TODO Validate schema of returned data?
+    // TODO Use specific projection to fetch entities?
+    // TODO WIP Hide table name from UI? (dedicated EntityType#table field?)
+    return await db.all(`SELECT * FROM ${entityType.code}`)
   }
 
-  async features(): Promise<any[]> {
-    const db = await this.domainDB()
-    return await db.all('SELECT * FROM features')
-  }
-
+  /**
+   * Lazy loads the database connection to the meta DB.
+   * 
+   * It will assure that all needed tables were created.
+   */
   private async metaDB(): Promise<sql3.Database> {
     // TODO WIP Extract common (`newDB`) from `metaDB` and `domainDB`
     if (this._metaDB) return this._metaDB
@@ -137,7 +135,7 @@ export class Database {
   /**
    * Lazy loads the database connection to the data domain.
    * 
-   * It may create the schema and populates the data domain with the example data domain if the
+   * It may create the schema and populate the data domain with the example data domain if the
    * `CREATE_EXAMPLE_DATA_DOMAIN` env var is set to `TRUE`.
    */
   private async domainDB(): Promise<sql3.Database> {
@@ -145,7 +143,7 @@ export class Database {
 
     this._domainDB = (async () => {
       const db = await sql3.Database.connect(':memory:')
-      await populateDB(db)
+      if (process.env.CREATE_EXAMPLE_DATA_DOMAIN === 'TRUE') await populateDB(db)
       return db
     })()
 
@@ -205,7 +203,7 @@ export class Database {
 
 async function createMetaDB(db: sql3.Database) {
   const tables = await db.listAllTables()
-  const setupTable = async (name: string, createFN: (db: sql3.Database) => void) => {
+  const setupTable = async (name: string, createFN: (db: sql3.Database) => Promise<void>) => {
     if (tables.includes(name)) return
     await createFN(db)
     log(`MetaDB table created: ${name}`)
