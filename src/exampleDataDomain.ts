@@ -12,7 +12,7 @@ export async function populateDB(db: sql3.Database): Promise<void> {
   const createTable = async (name: string, fn: (db: sql3.Database) => Promise<void>) => {
     if (tables.includes(name)) return
     await fn(db)
-    log(`Example Data Domain: table '${name}' created.`)
+    log(`Example Data Domain table created: ${name}`)
   }
 
   await createTable('users', createUsers)

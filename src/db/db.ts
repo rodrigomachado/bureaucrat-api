@@ -79,7 +79,7 @@ export class Database {
         const ft: FieldMeta = {
           name: toCapitalizedSpaced(f.name),
           code: f.name,
-          placeholder: '', // TODO WIP Infer placeholder from 
+          placeholder: '', // TODO WIP Infer placeholder 
           type: sqliteTypeToFieldType(f.type),
           identifier: f.pk === 1,
           hidden: f.pk === 1,
