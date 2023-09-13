@@ -1,4 +1,4 @@
-import * as sql3 from './sqlite3.promises'
+import * as sql3 from '../db/sqlite3.promises'
 import { populateDB } from '../exampleDataDomain'
 import { log } from 'console'
 import { toCapitalizedSpaced } from '../jsext/strings'
@@ -38,12 +38,12 @@ export enum FieldType {
  * To avoid unnecessary reruns of the costly inspection and allow for user overrides, the Data Domain model is
  * persisted to a separate database upon first inspection.
  */
-export class Database {
-  // TODO WIP Rename Database to DataDomain and move it to an appropriate package
-
-  private _metaDB?: Promise<sql3.Database>
-  private _domainDB?: Promise<sql3.Database>
-
+export class DataDomain {
+  /**
+   * Returns all the entity types in the data domain.
+   * It will first try to load the entity types from the metDB and, in case it doesn't cover all tables in the
+   * domainDB, it will introspect them and infer entity types.
+   */
   async entityTypes(): Promise<EntityMeta[]> {
     // TODO WIP Cache entity types with a reasonable expiration
     const entityTypes = await this.mappedEntityTypes()

@@ -4,12 +4,12 @@ import {
 } from 'graphql'
 import { GraphQLJSONObject } from 'graphql-type-json'
 
-import { Database } from './db'
+import { DataDomain } from './dataDomain'
 
 /**
  * Creates the GraphQL schema.
  */
-export function schema(db: Database): GraphQLSchema {
+export function schema(dataDomain: DataDomain): GraphQLSchema {
   // TODO GQL documentation (descriptions)
 
   const gqlFieldType = new GraphQLEnumType({
@@ -59,7 +59,7 @@ export function schema(db: Database): GraphQLSchema {
       entityTypes: {
         type: new GraphQLList(gqlEntityMeta),
         resolve: async () => {
-          const entityTypes: any = await db.entityTypes()
+          const entityTypes: any = await dataDomain.entityTypes()
           for (const et of entityTypes) {
             et.fields = Object.values(et.fields)
           }
@@ -73,7 +73,7 @@ export function schema(db: Database): GraphQLSchema {
         },
         // TODO Report and translate internal errors
         // Implementation details should not be exposed in the GraphQL interface
-        resolve: (source, { entityType }) => db.read(entityType),
+        resolve: (source, { entityType }) => dataDomain.read(entityType),
       },
     },
   })
