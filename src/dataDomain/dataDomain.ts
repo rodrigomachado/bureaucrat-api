@@ -72,7 +72,7 @@ export class DataDomain {
     const db = await this.domainDB()
     // TODO Validate schema of returned data?
     // TODO Use specific projection to fetch entities?
-    // TODO WIP Hide table name from UI? (dedicated EntityType#table field?)
+    // TODO Hide table name from UI? (dedicated EntityType#table field?)
     return await db.all(`SELECT * FROM ${entityType.code}`)
   }
 
@@ -109,7 +109,6 @@ export class DataDomain {
         et.fields[ft.code] = ft
       }
 
-      // TODO WIP Better title format inference?
       const formatFirstNFields = (numberOfFields: number) => Object.values(et.fields!)
         .filter(x => !x.hidden)
         .slice(0, numberOfFields)
