@@ -1,6 +1,16 @@
 import * as sqlite3 from 'sqlite3'
 
 /**
+ * Result for `Database.run(…)`.
+ */
+type RunResults = {
+  /** The last generated ID in the run execution. */
+  lastID: number,
+  /** The number of rows affected by the run execution. */
+  changes: number,
+}
+
+/**
  * SQLite3 Database Wrapper.
  * Mainly promisifies the original database class from SQLite3.
  */
@@ -36,11 +46,14 @@ export class Database {
     })
   }
 
-  async run(sql: string, params?: any): Promise<void> {
+  async run(sql: string, params?: any): Promise<RunResults> {
     return new Promise((res, rej) => {
-      this.inner.run(sql, params, err => {
+      this.inner.run(sql, params, function (err) {
         if (err) return rej(err)
-        res()
+        res({
+          lastID: this.lastID,
+          changes: this.changes,
+        })
       })
     })
   }

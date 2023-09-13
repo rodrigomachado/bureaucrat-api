@@ -39,20 +39,27 @@ export enum FieldType {
  * persisted to a separate database upon first inspection.
  */
 export class DataDomain {
+  private _entityTypes: Promise<EntityMeta[]> | undefined // Entity Types cache
+
   /**
    * Returns all the entity types in the data domain.
    * It will first try to load the entity types from the metDB and, in case it doesn't cover all tables in the
    * domainDB, it will introspect them and infer entity types.
    */
   async entityTypes(): Promise<EntityMeta[]> {
-    // TODO WIP Cache entity types with a reasonable expiration
     const entityTypes = await this.mappedEntityTypes()
-    const unmappedTables = await this.unmappedTables(entityTypes)
-    if (!unmappedTables.length) return entityTypes // No tables left to inspect
 
-    return entityTypes.concat(
-      await this.introspect(unmappedTables)// Inspect missing tables
-    )
+    // TODO Invalidate entity types cache eventually
+    if (this._entityTypes) return this._entityTypes
+    return this._entityTypes = (async () => {
+      const entityTypes = await this.mappedEntityTypes()
+      const unmappedTables = await this.unmappedTables(entityTypes)
+      if (!unmappedTables.length) return entityTypes // No tables left to inspect
+
+      return entityTypes.concat(
+        await this.introspect(unmappedTables)// Inspect missing tables
+      )
+    })()
   }
 
   /**
@@ -109,10 +116,23 @@ export class DataDomain {
         subtitle: formatFirstNFields(3),
       }
 
-      // TODO WIP Persist all infered metas and remove random ID attribution
-      const randId = () => Math.floor(Math.random() * 100000)
-      et.id = randId()
-      Object.values(et.fields).forEach(ft => ft.id = randId())
+      const metaDB = await this.metaDB()
+
+      // Save to the `entityType` table
+      const { lastID: entityID } = await metaDB.run(`
+        INSERT INTO entityType(name,code,titleFormatTitle,titleFormatSubtitle)
+        VALUES (?,?,?,?)
+      `, [et.name, et.code, et.titleFormat.title, et.titleFormat.subtitle])
+      et.id = entityID
+
+      // Save to the `fieldTypes` table
+      for (const f of Object.values(et.fields)) {
+        const { lastID: fieldID } = await metaDB.run(`
+          INSERT INTO fieldType(entityTypeId,name,code,placeholder,type,identifier,hidden)
+          VALUES (?,?,?,?,?,?,?)
+        `, [et.id, f.name, f.code, f.placeholder, f.type, f.identifier, f.hidden])
+        f.id = fieldID
+      }
 
       return et
     })))
@@ -145,12 +165,12 @@ export class DataDomain {
     cacheField: string,
     createFn: ((db: sql3.Database) => Promise<void>) | null
   ): Promise<sql3.Database> {
-    const get = () => (this as any)[cacheField]
-    const set = (value: sql3.Database) => (this as any)[cacheField] = value
+    const get = (): Promise<sql3.Database> | null => (this as any)[cacheField]
+    const set = (value: Promise<sql3.Database>) => (this as any)[cacheField] = value
 
-    let db
+    let db: Promise<sql3.Database> | null
     if (db = get()) return db
-    db = await (async () => {
+    db = (async () => {
       const db = await sql3.Database.connect(':memory:')
       if (createFn) await createFn(db)
       return db
