@@ -60,11 +60,11 @@ export class Database {
         code: table,
         fields: {}
       } as any
-      // TODO WIP Improve type derivation for partial EntityMeta
 
       const fields = await domainDB.all('SELECT * FROM PRAGMA_TABLE_INFO(?)', [table])
       // TODO Validate `fields` shape?
       for (const f of fields as any[]) {
+        log('processing field', f)
         const ft: FieldMeta = {
           name: toCapitalizedSpaced(f.name),
           code: f.name,
@@ -73,7 +73,6 @@ export class Database {
           identifier: f.pk === 1,
           hidden: f.pk === 1,
         } as any
-        // TODO WIP Improve type derivation for partial FieldMeta
 
         et.fields[ft.code] = ft as any
       }
@@ -120,16 +119,7 @@ export class Database {
    * It will assure that all needed tables were created.
    */
   private async metaDB(): Promise<sql3.Database> {
-    // TODO WIP Extract common (`newDB`) from `metaDB` and `domainDB`
-    if (this._metaDB) return this._metaDB
-
-    this._metaDB = (async () => {
-      const db = await sql3.Database.connect(':memory:')
-      await createMetaDB(db)
-      return db
-    })()
-
-    return this._metaDB
+    return await this.loadDB('_metaDB', createMetaDB)
   }
 
   /**
@@ -139,15 +129,30 @@ export class Database {
    * `CREATE_EXAMPLE_DATA_DOMAIN` env var is set to `TRUE`.
    */
   private async domainDB(): Promise<sql3.Database> {
-    if (this._domainDB) return this._domainDB
+    return this.loadDB('_domainDB', process.env.CREATE_EXAMPLE_DATA_DOMAIN === 'TRUE' ? populateDB : null)
+  }
 
-    this._domainDB = (async () => {
+  /**
+   * Lazy loads a database.
+   * Optionally it can create the database schema / populate initial data on first load.
+   */
+  private async loadDB(
+    cacheField: string,
+    createFn: ((db: sql3.Database) => Promise<void>) | null
+  ): Promise<sql3.Database> {
+    const get = () => (this as any)[cacheField]
+    const set = (value: sql3.Database) => (this as any)[cacheField] = value
+
+    let db
+    if (db = get()) return db
+    db = await (async () => {
       const db = await sql3.Database.connect(':memory:')
-      if (process.env.CREATE_EXAMPLE_DATA_DOMAIN === 'TRUE') await populateDB(db)
+      if (createFn) await createFn(db)
       return db
     })()
+    set(db)
 
-    return this._domainDB
+    return db
   }
 
   private async mappedEntityTypes(): Promise<EntityMeta[]> {
