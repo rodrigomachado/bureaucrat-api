@@ -91,19 +91,22 @@ export class DataDomain {
         fields: {}
       } as any
 
+      const [fieldExamples] = await domainDB.all(`SELECT * FROM ${table} LIMIT 1`)
+
       const fields = await domainDB.all('SELECT * FROM PRAGMA_TABLE_INFO(?)', [table])
       // TODO Validate `fields` shape?
-      for (const f of fields as any[]) {
+      for (const f of fields) {
+        const isID = f.pk === 1
+        const code = f.name
         const ft: FieldMeta = {
-          name: toCapitalizedSpaced(f.name),
-          code: f.name,
-          placeholder: '',
+          name: toCapitalizedSpaced(code),
+          code,
+          placeholder: isID ? null : fieldExamples && fieldExamples[code] || null,
           type: sqliteTypeToFieldType(f.type),
-          identifier: f.pk === 1,
-          hidden: f.pk === 1,
+          identifier: isID,
+          hidden: isID,
         } as any
-
-        et.fields[ft.code] = ft as any
+        et.fields[ft.code] = ft
       }
 
       // TODO WIP Better title format inference?
@@ -200,7 +203,7 @@ export class DataDomain {
     // Read fields for each entity type
     await Promise.all(entityTypes.map(async et => {
       const fields = await metaDB.all('SELECT * FROM fieldType WHERE entityTypeId = ?', [et.id])
-      for (const f of fields as any[]) {
+      for (const f of fields) {
         et.fields[f.name] = {
           id: f.id,
           name: f.name,

@@ -37,7 +37,7 @@ export class Database {
   }
 
 
-  async all(sql: string, params?: any): Promise<unknown[]> {
+  async all(sql: string, params?: any): Promise<any[]> {
     return new Promise((res, rej) => {
       this.inner.all(sql, params, (err, rows) => {
         if (err) return rej(err)

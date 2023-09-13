@@ -32,7 +32,7 @@ export async function populateDB(db: sql3.Database): Promise<void> {
 
 async function createUsers(db: sql3.Database): Promise<void> {
   await db.run(`
-    CREATE TABLE users (
+    CREATE TABLE user (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       first_name TEXT,
       middle_name TEXT,
@@ -45,7 +45,7 @@ async function createUsers(db: sql3.Database): Promise<void> {
     firstName: string, middleName: string, lastName: string, birthDate: string
   ) => (
     await db.run(`
-      INSERT INTO users (first_name, middle_name, last_name, birth_date)
+      INSERT INTO user (first_name, middle_name, last_name, birth_date)
       VALUES (?, ?, ?, ?)
     `, [firstName, middleName, lastName, birthDate])
   )
@@ -58,7 +58,7 @@ async function createUsers(db: sql3.Database): Promise<void> {
 
 async function createFeatures(db: sql3.Database): Promise<void> {
   await db.run(`
-    CREATE TABLE features (
+    CREATE TABLE feature (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT,
       path TEXT
@@ -67,7 +67,7 @@ async function createFeatures(db: sql3.Database): Promise<void> {
 
   const addFeature = async (name: string, path: string) => (
     await db.run(`
-      INSERT INTO features (name, path)
+      INSERT INTO feature (name, path)
       VALUES (?,?)
     `, [name, path])
   )
