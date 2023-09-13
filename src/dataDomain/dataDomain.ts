@@ -56,6 +56,20 @@ export class DataDomain {
   }
 
   /**
+   * Reads all entries for a particular entity type.
+   */
+  async read(entityTypeCode: string): Promise<any[]> {
+    const entityTypes = await this.entityTypes()
+    const [entityType] = entityTypes.filter(et => et.code === entityTypeCode)
+    if (!entityType) throw new Error(`No entity type found for code '${entityTypeCode}'`)
+    const db = await this.domainDB()
+    // TODO Validate schema of returned data?
+    // TODO Use specific projection to fetch entities?
+    // TODO WIP Hide table name from UI? (dedicated EntityType#table field?)
+    return await db.all(`SELECT * FROM ${entityType.code}`)
+  }
+
+  /**
    * Inspects the domain database for clues of the data domain model and infers its metadata.
    */
   private async introspect(unmappedTables: string[]): Promise<EntityMeta[]> {
@@ -102,20 +116,6 @@ export class DataDomain {
 
       return et
     })))
-  }
-
-  /**
-   * Reads all entries for a particular entity type.
-   */
-  async read(entityTypeCode: string): Promise<any[]> {
-    const entityTypes = await this.entityTypes()
-    const [entityType] = entityTypes.filter(et => et.code === entityTypeCode)
-    if (!entityType) throw new Error(`No entity type found for code '${entityTypeCode}'`)
-    const db = await this.domainDB()
-    // TODO Validate schema of returned data?
-    // TODO Use specific projection to fetch entities?
-    // TODO WIP Hide table name from UI? (dedicated EntityType#table field?)
-    return await db.all(`SELECT * FROM ${entityType.code}`)
   }
 
   /**
