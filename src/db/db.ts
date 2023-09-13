@@ -50,11 +50,20 @@ export class Database {
     const unmappedTables = await this.unmappedTables(entityTypes)
     if (!unmappedTables.length) return entityTypes // No tables left to inspect
 
-    // TODO WIP Extract introspection to another function
-    // Inspect missing tables
+    return entityTypes.concat(
+      await this.introspect(unmappedTables)// Inspect missing tables
+    )
+  }
+
+  /**
+   * Inspects the domain database for clues of the data domain model and infers its metadata.
+   */
+  private async introspect(unmappedTables: string[]): Promise<EntityMeta[]> {
+    // TODO Also use domainDB data, along with metadata tables, to infer metadata
+
     const domainDB = await this.domainDB()
-    // TODO WIP Parallelize processing of unmapped tables
-    for (const table of unmappedTables) {
+
+    return await Promise.all(unmappedTables.map((async table => {
       const et: EntityMeta = {
         name: toCapitalizedSpaced(table),
         code: table,
@@ -64,11 +73,10 @@ export class Database {
       const fields = await domainDB.all('SELECT * FROM PRAGMA_TABLE_INFO(?)', [table])
       // TODO Validate `fields` shape?
       for (const f of fields as any[]) {
-        log('processing field', f)
         const ft: FieldMeta = {
           name: toCapitalizedSpaced(f.name),
           code: f.name,
-          placeholder: '', // TODO WIP Infer placeholder 
+          placeholder: '',
           type: sqliteTypeToFieldType(f.type),
           identifier: f.pk === 1,
           hidden: f.pk === 1,
@@ -78,11 +86,10 @@ export class Database {
       }
 
       // TODO WIP Better title format inference?
-      const formatFirstNFields = (numberOfFields: number) =>
-        Object.values(et.fields!)
-          .filter(x => !x.hidden)
-          .slice(0, numberOfFields)
-          .map(x => `#{${x.code}}`).join(' ')
+      const formatFirstNFields = (numberOfFields: number) => Object.values(et.fields!)
+        .filter(x => !x.hidden)
+        .slice(0, numberOfFields)
+        .map(x => `#{${x.code}}`).join(' ')
       et.titleFormat = {
         title: formatFirstNFields(2),
         subtitle: formatFirstNFields(3),
@@ -93,10 +100,8 @@ export class Database {
       et.id = randId()
       Object.values(et.fields).forEach(ft => ft.id = randId())
 
-      entityTypes.push(et)
-    }
-
-    return entityTypes
+      return et
+    })))
   }
 
   /**
@@ -172,12 +177,11 @@ export class Database {
       fields: {}
     }))
 
-    // TODO WIP Parallelize fields processing
-    // Read `fieldType` table for each entity type
-    for (const entityType of entityTypes) {
-      const fields = await metaDB.all('SELECT * FROM fieldType WHERE entityTypeId = ?', [entityType.id])
+    // Read fields for each entity type
+    await Promise.all(entityTypes.map(async et => {
+      const fields = await metaDB.all('SELECT * FROM fieldType WHERE entityTypeId = ?', [et.id])
       for (const f of fields as any[]) {
-        entityType.fields[f.name] = {
+        et.fields[f.name] = {
           id: f.id,
           name: f.name,
           code: f.code,
@@ -187,7 +191,7 @@ export class Database {
           hidden: f.hidden
         }
       }
-    }
+    }))
 
     return entityTypes
   }
