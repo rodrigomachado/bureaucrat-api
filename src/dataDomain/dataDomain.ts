@@ -47,8 +47,6 @@ export class DataDomain {
    * domainDB, it will introspect them and infer entity types.
    */
   async entityTypes(): Promise<EntityMeta[]> {
-    const entityTypes = await this.mappedEntityTypes()
-
     // TODO Invalidate entity types cache eventually
     if (this._entityTypes) return this._entityTypes
     return this._entityTypes = (async () => {
@@ -170,8 +168,8 @@ export class DataDomain {
     const get = (): Promise<sql3.Database> | null => (this as any)[cacheField]
     const set = (value: Promise<sql3.Database>) => (this as any)[cacheField] = value
 
-    let db: Promise<sql3.Database> | null
-    if (db = get()) return db
+    let db = get()
+    if (db) return db
     db = (async () => {
       const db = await sql3.Database.connect(':memory:')
       if (createFn) await createFn(db)

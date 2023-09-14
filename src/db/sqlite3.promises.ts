@@ -19,8 +19,7 @@ export class Database {
 
   static async connect(filename: string): Promise<Database> {
     return new Promise((res, rej) => {
-      let db: sqlite3.Database
-      db = new sqlite3.Database(filename, err => {
+      const db = new sqlite3.Database(filename, err => {
         if (err) return rej(err)
         res(new Database(db))
       })
