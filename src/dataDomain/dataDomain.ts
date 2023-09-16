@@ -1,6 +1,8 @@
-import * as sql3 from '../db/sqlite3.promises'
-import { populateDB } from '../exampleDataDomain'
 import { log } from 'console'
+
+import { DataSource } from './dataSourceSQL'
+import { Database } from '../db/sqlite3.promises'
+import { populateDB } from '../exampleDataDomain'
 import { toCapitalizedSpaced } from '../jsext/strings'
 
 export type EntityMeta = {
@@ -67,11 +69,9 @@ export class DataDomain {
     const entityTypes = await this.entityTypes()
     const [entityType] = entityTypes.filter(et => et.code === entityTypeCode)
     if (!entityType) throw new Error(`No entity type found for code '${entityTypeCode}'`)
-    const db = await this.domainDB()
-    // TODO Validate schema of returned data?
-    // TODO Use specific projection to fetch entities?
-    // TODO Hide table name from UI? (dedicated EntityType#table field?)
-    return await db.all(`SELECT * FROM ${entityType.code}`)
+    return await DataSource
+      .read(await this.domainDB(), entityType)
+      .all()
   }
 
   /**
@@ -143,7 +143,7 @@ export class DataDomain {
    * 
    * It will assure that all needed tables were created.
    */
-  private async metaDB(): Promise<sql3.Database> {
+  private async metaDB(): Promise<Database> {
     return await this.loadDB('_metaDB', createMetaDB)
   }
 
@@ -153,7 +153,7 @@ export class DataDomain {
    * It may create the schema and populate the data domain with the example data domain if the
    * `CREATE_EXAMPLE_DATA_DOMAIN` env var is set to `TRUE`.
    */
-  private async domainDB(): Promise<sql3.Database> {
+  private async domainDB(): Promise<Database> {
     return this.loadDB('_domainDB', process.env.CREATE_EXAMPLE_DATA_DOMAIN === 'TRUE' ? populateDB : null)
   }
 
@@ -163,15 +163,15 @@ export class DataDomain {
    */
   private async loadDB(
     cacheField: string,
-    createFn: ((db: sql3.Database) => Promise<void>) | null
-  ): Promise<sql3.Database> {
-    const get = (): Promise<sql3.Database> | null => (this as any)[cacheField]
-    const set = (value: Promise<sql3.Database>) => (this as any)[cacheField] = value
+    createFn: ((db: Database) => Promise<void>) | null
+  ): Promise<Database> {
+    const get = (): Promise<Database> | null => (this as any)[cacheField]
+    const set = (value: Promise<Database>) => (this as any)[cacheField] = value
 
     let db = get()
     if (db) return db
     db = (async () => {
-      const db = await sql3.Database.connect(':memory:')
+      const db = await Database.connect(':memory:')
       if (createFn) await createFn(db)
       return db
     })()
@@ -230,9 +230,9 @@ export class DataDomain {
   }
 }
 
-async function createMetaDB(db: sql3.Database) {
+async function createMetaDB(db: Database) {
   const tables = await db.listAllTables()
-  const setupTable = async (name: string, createFN: (db: sql3.Database) => Promise<void>) => {
+  const setupTable = async (name: string, createFN: (db: Database) => Promise<void>) => {
     if (tables.includes(name)) return
     await createFN(db)
     log(`MetaDB table created: ${name}`)
@@ -242,7 +242,7 @@ async function createMetaDB(db: sql3.Database) {
   await setupTable('fieldType', createFieldTypeTable)
 }
 
-async function createEntityTypeTable(db: sql3.Database): Promise<void> {
+async function createEntityTypeTable(db: Database): Promise<void> {
   // TODO Introduce UUID field to prevent leaking db schema size?
   await db.run(`
     CREATE TABLE entityType (
@@ -255,7 +255,7 @@ async function createEntityTypeTable(db: sql3.Database): Promise<void> {
   `)
 }
 
-async function createFieldTypeTable(db: sql3.Database): Promise<void> {
+async function createFieldTypeTable(db: Database): Promise<void> {
   // TODO Introduce UUID field to prevent leaking db schema size?
   await db.run(`
     CREATE TABLE fieldType (
