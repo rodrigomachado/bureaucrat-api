@@ -62,16 +62,26 @@ export class DataDomain {
     })()
   }
 
+  async entityType(code: string): Promise<EntityMeta> {
+    const entityTypes = await this.entityTypes()
+    const [entityType] = entityTypes.filter(et => et.code === code)
+    if (!entityType) throw new Error(`No entity type found for code '${code}'`)
+    return entityType
+  }
+
   /**
    * Reads all entries for a particular entity type.
    */
-  async read(entityTypeCode: string): Promise<any[]> {
-    const entityTypes = await this.entityTypes()
-    const [entityType] = entityTypes.filter(et => et.code === entityTypeCode)
-    if (!entityType) throw new Error(`No entity type found for code '${entityTypeCode}'`)
-    return await DataSource
-      .read(await this.domainDB(), entityType)
-      .all()
+  async read(entityTypeCode: string, { limit }: ReadOptions = {}): Promise<any[]> {
+    const ds = DataSource.read(await this.domainDB(), await this.entityType(entityTypeCode))
+    if (limit) ds.limit(limit)
+    return await ds.all()
+  }
+
+  async update(entityTypeCode: string, data: any) {
+    const db = DataSource.update(await this.domainDB(), await this.entityType(entityTypeCode))
+    db.data(data)
+    return await db.execute()
   }
 
   /**
@@ -229,6 +239,11 @@ export class DataDomain {
     return unmappedTables
   }
 }
+
+type ReadOptions = {
+  limit?: number
+}
+
 
 async function createMetaDB(db: Database) {
   const tables = await db.listAllTables()

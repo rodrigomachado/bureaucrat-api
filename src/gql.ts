@@ -11,8 +11,10 @@ import { DataDomain } from './dataDomain'
  */
 export function schema(dataDomain: DataDomain): GraphQLSchema {
   // TODO GQL documentation (descriptions)
+  // TODO Use GQL context instead of relying on closures to hand in the `dataDomain`
 
   const gqlFieldType = new GraphQLEnumType({
+    // TODO GQL enum type factory utility
     name: 'FieldType',
     values: {
       string: { value: 'string' },
@@ -24,6 +26,7 @@ export function schema(dataDomain: DataDomain): GraphQLSchema {
   })
   const gqlFieldMeta = new GraphQLObjectType({
     name: 'FieldMeta',
+    // TODO GQL value object type factory utility
     // TODO Change to { [fieldName]: FieldConfig } type?
     fields: {
       id: { type: GraphQLInt },
@@ -58,13 +61,10 @@ export function schema(dataDomain: DataDomain): GraphQLSchema {
     fields: {
       entityTypes: {
         type: new GraphQLList(gqlEntityMeta),
-        resolve: async () => {
-          const entityTypes: any = await dataDomain.entityTypes()
-          for (const et of entityTypes) {
-            et.fields = Object.values(et.fields)
-          }
-          return entityTypes
-        }
+        resolve: async () => (await dataDomain.entityTypes()).map((value) => ({
+          ...value,
+          fields: Object.values(value.fields),
+        }))
       },
       entities: {
         type: new GraphQLList(GraphQLJSONObject),
@@ -78,5 +78,22 @@ export function schema(dataDomain: DataDomain): GraphQLSchema {
     },
   })
 
-  return new GraphQLSchema({ query: gqlQuery })
+  const gqlMutation = new GraphQLObjectType({
+    name: 'Mutation',
+    // TODO GQL mutation branch factory utility
+    fields: {
+      entityUpdate: {
+        type: GraphQLJSONObject,
+        args: {
+          entityTypeCode: { type: GraphQLString },
+          data: { type: GraphQLJSONObject },
+        },
+        resolve: (source, { entityTypeCode, data }) => {
+          dataDomain.update(entityTypeCode, data)
+        },
+      }
+    }
+  })
+
+  return new GraphQLSchema({ query: gqlQuery, mutation: gqlMutation })
 }
