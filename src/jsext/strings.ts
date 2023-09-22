@@ -42,7 +42,6 @@ export function toCapitalizedSpaced(s: string) {
  * Every line must contain the margin symbol: "|". Only spaces or tabs are allowed before it.
  */
 export function trimMargin(strings: TemplateStringsArray, ...exprs: any[]): string {
-  // TODO WIP Unit test timeMargin
   let all = ''
   for (let i = 0; i < exprs.length; i++) {
     all += strings[i]
@@ -52,7 +51,7 @@ export function trimMargin(strings: TemplateStringsArray, ...exprs: any[]): stri
 
   const lines = all.split('\n')
   if (lines.at(0)?.trim() !== '') throw new Error(
-    `The first line on a trimMargim string must be empty. String: \`${all}\``
+    `The first line on a trimMargin string must be empty. String: \`${all}\``
   )
   lines.shift() // remove first line
   if (lines.at(-1)?.trim() !== '') throw new Error(
@@ -64,7 +63,7 @@ export function trimMargin(strings: TemplateStringsArray, ...exprs: any[]): stri
   return lines.reduce((acc, line, pos) => {
     const marginPos = line.indexOf('|')
     if (marginPos < 0 || line.substring(0, marginPos).trim() !== '') throw new Error(
-      `Margin symbol (|) must be in the start of the line. Line ${pos + 1} String: \`${all}\``
+      `The margin symbol (|) must be in the start of the line. Line ${pos + 1} String: \`${all}\``
     )
     return acc + line.substring(marginPos + 1) + (pos === lines.length - 1 ? '' : '\n')
   }, '')
