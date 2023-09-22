@@ -1,4 +1,4 @@
-import { EntityMeta } from '.'
+import { EntityMeta } from './dataDomain'
 import { Database } from '../db/sqlite3.promises'
 
 export const DataSource = {
@@ -55,7 +55,7 @@ class UpdateBuilder {
     }))
     ids.forEach(({ field, value }) => {
       if (value !== null && value !== undefined) return
-      throw new Error(`The data provided does not define the identifier '${field}`)
+      throw new Error(`The data provided does not define the identifier '${field}'`)
     })
     if (!ids.length) throw new Error('Unable to uniquely identify an entity: it has no identifier fields')
 
@@ -76,7 +76,6 @@ class UpdateBuilder {
       ...ids.map(({ value }) => value),
     ]
 
-    // TODO WIP Test SQL generation
     const result = await this.db.run(sql, params)
     if (result.changes !== 1) throw new Error(
       `Data update expected to change a single value but it changed ${result.changes}`
