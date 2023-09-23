@@ -1,10 +1,11 @@
 import { DataDomain } from '.'
 
-describe('dataDomain.entityTypes', () => {
+process.env.CREATE_EXAMPLE_DATA_DOMAIN = 'TRUE'
+
+describe('DataDomain.entityTypes', () => {
   test('list entity types', async () => {
     // TODO Decouple data domain DB loading and population from DataDomain (should be injected)
     // TODO Decouple meta DB loading from DataDomain (should be injected)
-    process.env.CREATE_EXAMPLE_DATA_DOMAIN = 'TRUE'
 
     const dd = new DataDomain()
     const ets = await dd.entityTypes()
@@ -50,8 +51,74 @@ describe('dataDomain.entityTypes', () => {
       }
     })
   })
+
+  test.todo('inspect titleFormat')
 })
 
-test.todo('DataDomain.read')
+describe('DataDomain.read', () => {
+  test('read all entities', async () => {
+    const dd = new DataDomain()
+    const et = await dd.entityType('user')
+    const es = await dd.read(et.code)
+    expect(es).toHaveLength(5)
+    expect(es[0]).toEqual({
+      id: 1,
+      first_name: 'Douglas',
+      middle_name: 'Noël',
+      last_name: 'Adams',
+      birth_date: '1767-07-11'
+    })
+  })
 
-test.todo('DataDomain.update')
+  test('read ids', async () => {
+    const dd = new DataDomain()
+    const et = await dd.entityType('user')
+    const es = await dd.read(et.code, { ids: [1] })
+    expect(es).toEqual([{
+      'id': 1,
+      'first_name': 'Douglas',
+      'middle_name': 'Noël',
+      'last_name': 'Adams',
+      'birth_date': '1767-07-11',
+    }])
+  })
+
+  test('read ids: ids length mismatch', async () => {
+    try {
+      const dd = new DataDomain()
+      const et = await dd.entityType('user')
+      await dd.read(et.code, { ids: [1, 2] })
+      fail('Expected an error to be thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(Error)
+      expect((e as Error).message).toBe('Invalid IDs provided (length: 2). Expected 1 id: \'id\'')
+    }
+  })
+
+  test('read limit', async () => {
+    const dd = new DataDomain()
+    const et = await dd.entityType('user')
+    let es
+    es = await dd.read(et.code, { limit: 1 })
+    expect(es).toHaveLength(1)
+    es = await dd.read(et.code, { limit: 2 })
+    expect(es).toHaveLength(2)
+  })
+})
+
+describe('DataDomain.update', () => {
+  test('update one field', async () => {
+    const dd = new DataDomain()
+    const et = await dd.entityType('user')
+    let e
+    [e] = await dd.read(et.code, { limit: 1 })
+    e = await dd.update(et.code, { id: e.id, first_name: 'Rick' })
+    expect(e).toEqual({
+      'id': 1,
+      'first_name': 'Rick',
+      'middle_name': 'Noël',
+      'last_name': 'Adams',
+      'birth_date': '1767-07-11',
+    })
+  })
+})

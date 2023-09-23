@@ -17,6 +17,14 @@ export function toCapitalizedSpaced(s: string) {
 }
 
 /**
+ * Returns the `singular` value if `list` has a single element.
+ * Returns `plural` otherwise.
+ */
+export function pluralize(list: any[], singular: string, plural: string): string {
+  return list.length === 1 ? singular : plural
+}
+
+/**
  * Removes the margin of a string.
  * 
  * Consider the following code:

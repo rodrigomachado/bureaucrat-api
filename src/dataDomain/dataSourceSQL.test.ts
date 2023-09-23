@@ -13,6 +13,16 @@ describe('Read SQL', () => {
     expect(all.mock.calls[0][0]).toBe('SELECT * FROM user')
   })
 
+  test('Read where ID SQL render', async () => {
+    const all = jest.fn((_: string, params: any[]) => Promise.resolve())
+    await DataSource
+      .read({ all } as any, { code: 'feature', fields: { id: { code: 'id', identifier: true } } } as any)
+      .ids([1])
+      .all()
+    expect(all.mock.calls).toHaveLength(1)
+    expect(all.mock.calls[0]).toEqual(['SELECT * FROM feature WHERE id = ?', [1]])
+  })
+
   test('Read first row SQL render', async () => {
     const all = jest.fn((_: string) => Promise.resolve())
     await DataSource.read({ all } as any, { code: 'feature' } as any).limit(1).all()

@@ -72,16 +72,24 @@ export class DataDomain {
   /**
    * Reads all entries for a particular entity type.
    */
-  async read(entityTypeCode: string, { limit }: ReadOptions = {}): Promise<any[]> {
+  async read(entityTypeCode: string, { ids, limit }: ReadOptions = {}): Promise<any[]> {
     const ds = DataSource.read(await this.domainDB(), await this.entityType(entityTypeCode))
+    if (ids) ds.ids(ids)
     if (limit) ds.limit(limit)
     return await ds.all()
   }
 
   async update(entityTypeCode: string, data: any) {
-    const db = DataSource.update(await this.domainDB(), await this.entityType(entityTypeCode))
+    // TODO WIP Resolve duplication on `DataSource.read(…)` and `…update(…)`. Ex: idData evaluation
+    const et = await this.entityType(entityTypeCode)
+
+    const db = DataSource.update(await this.domainDB(), et)
     db.data(data)
-    return await db.execute()
+    await db.execute()
+
+    const idData = Object.values(et.fields).filter(f => f.identifier).map(f => data[f.code])
+    const entities = await DataSource.read(await this.domainDB(), et).ids(idData).all()
+    return entities[0]
   }
 
   /**
@@ -241,7 +249,8 @@ export class DataDomain {
 }
 
 type ReadOptions = {
-  limit?: number
+  ids?: any[],
+  limit?: number,
 }
 
 
