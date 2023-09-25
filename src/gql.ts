@@ -88,9 +88,7 @@ export function schema(dataDomain: DataDomain): GraphQLSchema {
           entityTypeCode: { type: GraphQLString },
           data: { type: GraphQLJSONObject },
         },
-        resolve: (source, { entityTypeCode, data }) => {
-          dataDomain.update(entityTypeCode, data)
-        },
+        resolve: (source, { entityTypeCode, data }) => dataDomain.update(entityTypeCode, data),
       }
     }
   })
