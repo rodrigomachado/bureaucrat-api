@@ -80,7 +80,7 @@ export class DataDomain {
   }
 
   async update(entityTypeCode: string, data: any) {
-    // TODO WIP Resolve duplication on `DataSource.read(…)` and `…update(…)`. Ex: idData evaluation
+    // TODO Resolve duplication on `DataSource.read(…)` and `…update(…)`. Ex: idData evaluation
     const et = await this.entityType(entityTypeCode)
 
     const db = DataSource.update(await this.domainDB(), et)

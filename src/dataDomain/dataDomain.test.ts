@@ -12,6 +12,7 @@ describe('DataDomain.entityTypes', () => {
     expect(ets).toHaveLength(2)
 
     expect(ets[0].code).toBe('user')
+    expect(ets[0].name).toBe('User')
     expect(ets[0].fields).toEqual({
       id: {
         name: 'Id', code: 'id', placeholder: null,
@@ -34,8 +35,13 @@ describe('DataDomain.entityTypes', () => {
         type: 'string', identifier: false, hidden: false, id: 8
       }
     })
+    expect(ets[0].titleFormat).toEqual({
+      subtitle: '#{first_name} #{middle_name} #{last_name}',
+      title: '#{first_name} #{middle_name}',
+    })
 
     expect(ets[1].code).toBe('feature')
+    expect(ets[1].name).toBe('Feature')
     expect(ets[1].fields).toEqual({
       id: {
         name: 'Id', code: 'id', placeholder: null,
@@ -50,9 +56,11 @@ describe('DataDomain.entityTypes', () => {
         type: 'string', identifier: false, hidden: false, id: 6
       }
     })
+    expect(ets[1].titleFormat).toEqual({
+      subtitle: '#{name} #{path}',
+      title: '#{name} #{path}',
+    })
   })
-
-  test.todo('inspect titleFormat')
 })
 
 describe('DataDomain.read', () => {
