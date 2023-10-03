@@ -1,11 +1,12 @@
 import {
-  GraphQLBoolean, GraphQLEnumType, GraphQLInt,
+  GraphQLBoolean, GraphQLInt,
   GraphQLList, GraphQLObjectType, GraphQLSchema, GraphQLString,
 } from 'graphql'
 import { GraphQLJSONObject } from 'graphql-type-json'
 
 import { DataDomain } from './dataDomain'
 import { trimMargin } from './jsext/strings'
+import { newGraphQLEnumType } from './graphqlext'
 
 type Context = {
   dataDomain: DataDomain,
@@ -15,23 +16,14 @@ type Context = {
  * Creates the GraphQL schema.
  */
 export function schema(): GraphQLSchema {
-  const gqlFieldType = new GraphQLEnumType({
-    // TODO GQL enum type factory utility
-    name: 'FieldType',
-    description: 'The type of data accepted by an entity field.',
-    values: {
-      string: { value: 'string' },
-      number: { value: 'number' },
-      date: { value: 'date' },
-      datetime: { value: 'datetime' },
-      time: { value: 'time' },
-    },
-  })
+  const gqlFieldType = newGraphQLEnumType(
+    'FieldType',
+    'The type of data accepted by an entity field.',
+    ['string', 'number', 'date', 'datetime', 'time'],
+  )
   const gqlFieldMeta = new GraphQLObjectType({
     name: 'FieldMeta',
     description: 'Description (metadata) of an entity field.',
-    // TODO GQL value object type factory utility
-    // TODO Change to { [fieldName]: FieldConfig } type?
     fields: {
       id: {
         description: 'Unique identifier of the field within the entity',
@@ -100,7 +92,7 @@ export function schema(): GraphQLSchema {
         type: GraphQLString,
       },
       code: {
-        // TODO Delete code on entity Meta.
+        // TODO Delete `code` field on entity Meta.
         // It should be renamed to table and not sent to the UI.
         description: 'Unique code of the entity.',
         type: GraphQLString,
