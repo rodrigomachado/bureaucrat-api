@@ -11,7 +11,8 @@ import { DataDomain } from './dataDomain'
  */
 export function schema(dataDomain: DataDomain): GraphQLSchema {
   // TODO GQL documentation (descriptions)
-  // TODO Use GQL context instead of relying on closures to hand in the `dataDomain`
+  // TODO Use GQL context instead of relying on closures to hand in the
+  // `dataDomain`
 
   const gqlFieldType = new GraphQLEnumType({
     // TODO GQL enum type factory utility
@@ -53,7 +54,7 @@ export function schema(dataDomain: DataDomain): GraphQLSchema {
       code: { type: GraphQLString },
       titleFormat: { type: gqlEntityTitleFormat },
       fields: { type: new GraphQLList(gqlFieldMeta) },
-    }
+    },
   })
 
   const gqlQuery = new GraphQLObjectType({
@@ -64,7 +65,7 @@ export function schema(dataDomain: DataDomain): GraphQLSchema {
         resolve: async () => (await dataDomain.entityTypes()).map((value) => ({
           ...value,
           fields: Object.values(value.fields),
-        }))
+        })),
       },
       entities: {
         type: new GraphQLList(GraphQLJSONObject),
@@ -88,9 +89,11 @@ export function schema(dataDomain: DataDomain): GraphQLSchema {
           entityTypeCode: { type: GraphQLString },
           data: { type: GraphQLJSONObject },
         },
-        resolve: (source, { entityTypeCode, data }) => dataDomain.update(entityTypeCode, data),
-      }
-    }
+        resolve(source, { entityTypeCode, data }) {
+          return dataDomain.update(entityTypeCode, data)
+        },
+      },
+    },
   })
 
   return new GraphQLSchema({ query: gqlQuery, mutation: gqlMutation })

@@ -31,7 +31,9 @@ export class Database {
   }
 
   async listAllTables(): Promise<string[]> {
-    const tables: any[] = await this.all('SELECT name FROM sqlite_master WHERE type=\'table\'')
+    const tables: any[] = await this.all(
+      'SELECT name FROM sqlite_master WHERE type=\'table\'',
+    )
     return tables.map(x => x.name)
   }
 

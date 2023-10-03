@@ -20,7 +20,9 @@ export function toCapitalizedSpaced(s: string) {
  * Returns the `singular` value if `list` has a single element.
  * Returns `plural` otherwise.
  */
-export function pluralize(list: any[], singular: string, plural: string): string {
+export function pluralize(
+  list: any[], singular: string, plural: string,
+): string {
   return list.length === 1 ? singular : plural
 }
 
@@ -44,12 +46,15 @@ export function pluralize(list: any[], singular: string, plural: string): string
  * 
  * Note that `trimMargin` does not remove empty spaces from the end of lines.
  * 
- * `trimMargin` discards the first and last lines (the ones containing backticks). They must be empty (or
- * contain only spaces).
+ * `trimMargin` discards the first and last lines (the ones containing
+ * backticks). They must be empty (or contain only spaces).
  * 
- * Every line must contain the margin symbol: "|". Only spaces or tabs are allowed before it.
+ * Every line must contain the margin symbol: "|". Only spaces or tabs are
+ * allowed before it.
  */
-export function trimMargin(strings: TemplateStringsArray, ...exprs: any[]): string {
+export function trimMargin(
+  strings: TemplateStringsArray, ...exprs: any[]
+): string {
   let all = ''
   for (let i = 0; i < exprs.length; i++) {
     all += strings[i]
@@ -70,9 +75,16 @@ export function trimMargin(strings: TemplateStringsArray, ...exprs: any[]): stri
 
   return lines.reduce((acc, line, pos) => {
     const marginPos = line.indexOf('|')
-    if (marginPos < 0 || line.substring(0, marginPos).trim() !== '') throw new Error(
-      `The margin symbol (|) must be in the start of the line. Line ${pos + 1} String: \`${all}\``
+    if (
+      marginPos < 0 || line.substring(0, marginPos).trim() !== ''
+    ) throw new Error(
+      'The margin symbol (|) must be in the start of the line. ' +
+      `Line ${pos + 1} String: \`${all}\``
     )
-    return acc + line.substring(marginPos + 1) + (pos === lines.length - 1 ? '' : '\n')
+    return (
+      acc +
+      line.substring(marginPos + 1) +
+      (pos === lines.length - 1 ? '' : '\n')
+    )
   }, '')
 }

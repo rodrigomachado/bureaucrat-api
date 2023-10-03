@@ -37,16 +37,22 @@ describe('trimMargin', () => {
   test('missing pipe', () => {
     expect(() => trimMargin`
       Line
-    `).toThrowError(/The margin symbol \(\|\) must be in the start of the line\./)
+    `).toThrowError(
+      /The margin symbol \(\|\) must be in the start of the line\./,
+    )
 
     expect(() => trimMargin`
       First | Line
-    `).toThrowError(/The margin symbol \(\|\) must be in the start of the line\./)
+    `).toThrowError(
+      /The margin symbol \(\|\) must be in the start of the line\./,
+    )
 
     expect(() => trimMargin`
       |First Line
       Second Line
       |Third Line
-    `).toThrowError(/The margin symbol \(\|\) must be in the start of the line\./)
+    `).toThrowError(
+      /The margin symbol \(\|\) must be in the start of the line\./,
+    )
   })
 })

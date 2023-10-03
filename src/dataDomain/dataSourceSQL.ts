@@ -3,8 +3,12 @@ import { Database } from '../db/sqlite3.promises'
 import { pluralize as p } from '../jsext/strings'
 
 export const DataSource = {
-  read: (db: Database, entityType: EntityMeta) => new ReadBuilder(db, entityType),
-  update: (db: Database, entityType: EntityMeta) => new UpdateBuilder(db, entityType),
+  read: (
+    db: Database, entityType: EntityMeta,
+  ) => new ReadBuilder(db, entityType),
+  update: (
+    db: Database, entityType: EntityMeta,
+  ) => new UpdateBuilder(db, entityType),
 }
 
 class ReadBuilder {
@@ -42,7 +46,8 @@ class ReadBuilder {
       if (idsL !== idDataL) {
         throw new Error(
           `Invalid IDs provided (length: ${idDataL}). ` +
-          `Expected ${idsL} ${p(ids, 'id', 'ids')}: ${ids.map(f => `'${f.code}'`).join(', ')}`
+          `Expected ${idsL} ${p(ids, 'id', 'ids')}: ` +
+          `${ids.map(f => `'${f.code}'`).join(', ')}`
         )
       }
       sql += ' WHERE ' + ids.map(f => `${f.code} = ?`).join(' AND ')
@@ -70,15 +75,21 @@ class UpdateBuilder {
   }
 
   async execute(): Promise<void> {
-    const ids = Object.values(this.et.fields).filter(ft => ft.identifier).map(ft => ({
-      field: ft.code,
-      value: this._data[ft.code],
-    }))
+    const ids = Object.values(this.et.fields)
+      .filter(ft => ft.identifier)
+      .map(ft => ({
+        field: ft.code,
+        value: this._data[ft.code],
+      }))
     ids.forEach(({ field, value }) => {
       if (value !== null && value !== undefined) return
-      throw new Error(`The data provided does not define the identifier '${field}'`)
+      throw new Error(
+        `The data provided does not define the identifier '${field}'`,
+      )
     })
-    if (!ids.length) throw new Error('Unable to uniquely identify an entity: it has no identifier fields')
+    if (!ids.length) throw new Error(
+      'Unable to uniquely identify an entity: it has no identifier fields',
+    )
 
     const fieldsToUpdate = Object
       .values(this.et.fields)
@@ -87,10 +98,13 @@ class UpdateBuilder {
         field: ft.code,
         value: this._data[ft.code],
       }))
-      .filter(({ value }) => value !== undefined) // Null values should still be updated
+      // Null values should still be updated
+      .filter(({ value }) => value !== undefined)
 
-    const setClause = '\nSET ' + fieldsToUpdate.map(({ field }) => `${field} = ?`).join(', ')
-    const whereClause = '\nWHERE ' + ids.map(({ field }) => `${field} = ?`).join(' AND ')
+    const setClause = '\nSET ' +
+      fieldsToUpdate.map(({ field }) => `${field} = ?`).join(', ')
+    const whereClause = '\nWHERE ' +
+      ids.map(({ field }) => `${field} = ?`).join(' AND ')
     const sql = `UPDATE ${this.et.code}` + setClause + whereClause
     const params = [
       ...fieldsToUpdate.map(({ value }) => value),
@@ -99,7 +113,8 @@ class UpdateBuilder {
 
     const result = await this.db.run(sql, params)
     if (result.changes !== 1) throw new Error(
-      `Data update expected to change a single value but it changed ${result.changes}`
+      'Data update expected to change a single value ' +
+      `but it changed ${result.changes}`
     )
   }
 }

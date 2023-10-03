@@ -7,7 +7,8 @@
   "ignorePatterns": [
     "/dist",
     "/node_modules",
-    "!/.eslintrc"
+    "!/.eslintrc",
+    "/jest.config.js"
   ],
   "plugins": [
     "@typescript-eslint"
@@ -25,6 +26,17 @@
     "quotes": [
       "error",
       "single"
+    ],
+    "max-len": [
+      "error",
+      {
+        "code": 80,
+        "comments": 80
+      }
+    ],
+    "comma-dangle": [
+      "error",
+      "always-multiline"
     ],
     "@typescript-eslint/no-explicit-any": "warn"
   }
