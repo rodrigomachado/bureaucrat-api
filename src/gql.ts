@@ -7,13 +7,14 @@ import { GraphQLJSONObject } from 'graphql-type-json'
 import { DataDomain } from './dataDomain'
 import { trimMargin } from './jsext/strings'
 
+type Context = {
+  dataDomain: DataDomain,
+}
+
 /**
  * Creates the GraphQL schema.
  */
-export function schema(dataDomain: DataDomain): GraphQLSchema {
-  // TODO Use GQL context instead of relying on closures to hand in the
-  // `dataDomain`
-
+export function schema(): GraphQLSchema {
   const gqlFieldType = new GraphQLEnumType({
     // TODO GQL enum type factory utility
     name: 'FieldType',
@@ -115,15 +116,17 @@ export function schema(dataDomain: DataDomain): GraphQLSchema {
     },
   })
 
-  const gqlQuery = new GraphQLObjectType({
+  const gqlQuery = new GraphQLObjectType<void, Context>({
     name: 'Query',
     fields: {
       entityTypes: {
         type: new GraphQLList(gqlEntityMeta),
-        resolve: async () => (await dataDomain.entityTypes()).map((value) => ({
-          ...value,
-          fields: Object.values(value.fields),
-        })),
+        async resolve(source, params, { dataDomain }) {
+          return (await dataDomain.entityTypes()).map((value) => ({
+            ...value,
+            fields: Object.values(value.fields),
+          }))
+        },
       },
       entities: {
         type: new GraphQLList(GraphQLJSONObject),
@@ -132,12 +135,14 @@ export function schema(dataDomain: DataDomain): GraphQLSchema {
         },
         // TODO Report and translate internal errors
         // Implementation details should not be exposed in the GraphQL interface
-        resolve: (source, { entityType }) => dataDomain.read(entityType),
+        resolve(source, { entityType }, { dataDomain }) {
+          return dataDomain.read(entityType)
+        },
       },
     },
   })
 
-  const gqlMutation = new GraphQLObjectType({
+  const gqlMutation = new GraphQLObjectType<void, Context>({
     name: 'Mutation',
     // TODO GQL mutation branch factory utility
     fields: {
@@ -147,7 +152,7 @@ export function schema(dataDomain: DataDomain): GraphQLSchema {
           entityTypeCode: { type: GraphQLString },
           data: { type: GraphQLJSONObject },
         },
-        resolve(source, { entityTypeCode, data }) {
+        resolve(source, { entityTypeCode, data }, { dataDomain }) {
           return dataDomain.update(entityTypeCode, data)
         },
       },

@@ -15,7 +15,10 @@ export default async function main() {
     app.use(express.json())
     app.use(express.urlencoded({ extended: true }))
 
-    app.all('/api', createHandler({ schema: schema(dataDomain) }))
+    app.all('/api', createHandler({
+      schema: schema(),
+      context: { dataDomain },
+    }))
 
     const port = process.env.PORT
     app.listen(port, () => {
