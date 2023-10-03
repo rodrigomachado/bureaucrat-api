@@ -5,18 +5,19 @@ import {
 import { GraphQLJSONObject } from 'graphql-type-json'
 
 import { DataDomain } from './dataDomain'
+import { trimMargin } from './jsext/strings'
 
 /**
  * Creates the GraphQL schema.
  */
 export function schema(dataDomain: DataDomain): GraphQLSchema {
-  // TODO GQL documentation (descriptions)
   // TODO Use GQL context instead of relying on closures to hand in the
   // `dataDomain`
 
   const gqlFieldType = new GraphQLEnumType({
     // TODO GQL enum type factory utility
     name: 'FieldType',
+    description: 'The type of data accepted by an entity field.',
     values: {
       string: { value: 'string' },
       number: { value: 'number' },
@@ -27,20 +28,59 @@ export function schema(dataDomain: DataDomain): GraphQLSchema {
   })
   const gqlFieldMeta = new GraphQLObjectType({
     name: 'FieldMeta',
+    description: 'Description (metadata) of an entity field.',
     // TODO GQL value object type factory utility
     // TODO Change to { [fieldName]: FieldConfig } type?
     fields: {
-      id: { type: GraphQLInt },
-      name: { type: GraphQLString },
-      code: { type: GraphQLString },
-      placeholder: { type: GraphQLString },
-      type: { type: gqlFieldType },
-      identifier: { type: GraphQLBoolean },
-      hidden: { type: GraphQLBoolean },
+      id: {
+        description: 'Unique identifier of the field within the entity',
+        type: GraphQLInt,
+      },
+      name: {
+        description: 'Human readable name of the field.',
+        type: GraphQLString,
+      },
+      code: {
+        description: 'Key of the field in an entity data JSON',
+        type: GraphQLString,
+      },
+      placeholder: {
+        description:
+          'A placeholder to show the user when presenting them an entity form.',
+        type: GraphQLString,
+      },
+      type: {
+        description: gqlFieldType.description,
+        type: gqlFieldType,
+      },
+      identifier: {
+        description: 'Whether the field is part of the entity identifier.',
+        type: GraphQLBoolean,
+      },
+      hidden: {
+        description:
+          'Whether the field and its value should be show to the user',
+        type: GraphQLBoolean,
+      },
     },
   })
   const gqlEntityTitleFormat = new GraphQLObjectType({
     name: 'EntityTitleFormat',
+    description: trimMargin`
+      |Formatting pattern to generate title and subtitle for an entity.
+      |
+      |The pattern includes references to entity fields in the format
+      |  \`#{<field_code>}\`
+      |which should be replaced by the value of the indicated field.
+      |
+      |Ex:
+      |  \`\`\`js
+      |    {
+      |      title: \`#{first_name} #{last_name}\`,
+      |      subtitle: \`#{first_name} #{middle_name} #{last_name}\`,
+      |    }
+      |  \`\`\`
+    `,
     fields: {
       title: { type: GraphQLString },
       subtitle: { type: GraphQLString },
@@ -48,12 +88,30 @@ export function schema(dataDomain: DataDomain): GraphQLSchema {
   })
   const gqlEntityMeta = new GraphQLObjectType({
     name: 'EntityMeta',
+    description: 'Description (metadata) of an entity.',
     fields: {
-      id: { type: GraphQLInt },
-      name: { type: GraphQLString },
-      code: { type: GraphQLString },
-      titleFormat: { type: gqlEntityTitleFormat },
-      fields: { type: new GraphQLList(gqlFieldMeta) },
+      id: {
+        description: 'Unique identifier of the entity.',
+        type: GraphQLInt,
+      },
+      name: {
+        description: 'Human readable name of the entity.',
+        type: GraphQLString,
+      },
+      code: {
+        // TODO Delete code on entity Meta.
+        // It should be renamed to table and not sent to the UI.
+        description: 'Unique code of the entity.',
+        type: GraphQLString,
+      },
+      titleFormat: {
+        description: gqlEntityTitleFormat.description,
+        type: gqlEntityTitleFormat,
+      },
+      fields: {
+        description: 'All the fields that compose the entity.',
+        type: new GraphQLList(gqlFieldMeta),
+      },
     },
   })
 
