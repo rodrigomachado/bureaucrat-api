@@ -92,8 +92,6 @@ export function schema(): GraphQLSchema {
         type: GraphQLString,
       },
       code: {
-        // TODO Delete `code` field on entity Meta.
-        // It should be renamed to table and not sent to the UI.
         description: 'Unique code of the entity.',
         type: GraphQLString,
       },

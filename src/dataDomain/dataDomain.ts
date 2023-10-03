@@ -9,6 +9,7 @@ export type EntityMeta = {
   id: number,
   name: string,
   code: string,
+  // TODO Immutable `table` field, allowing `code` to be overriden by the user
   titleFormat: { title: string, subtitle: string },
   fields: {
     [name: string]: FieldMeta,
