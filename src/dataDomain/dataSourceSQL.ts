@@ -11,6 +11,7 @@ export const DataSource = {
   ) => new UpdateBuilder(db, entityType),
 }
 
+// TODO Should this fluent interface be a single function?
 class ReadBuilder {
   private db: Database
   private et: EntityMeta
@@ -38,7 +39,7 @@ class ReadBuilder {
     // TODO Hide table name from UI? (dedicated EntityType#table field?)
 
     const params: any[] = []
-    let sql = `SELECT * FROM ${this.et.code}`
+    let sql = `SELECT * FROM ${this.et.table}`
     if (this._ids) {
       const ids = Object.values(this.et.fields).filter(f => f.identifier)
       const idsL = ids.length
@@ -50,15 +51,26 @@ class ReadBuilder {
           `${ids.map(f => `'${f.code}'`).join(', ')}`
         )
       }
-      sql += ' WHERE ' + ids.map(f => `${f.code} = ?`).join(' AND ')
+      sql += ' WHERE ' + ids.map(f => `${f.column} = ?`).join(' AND ')
       params.push(...this._ids)
     }
     if (this._limit) sql += ` LIMIT ${this._limit}`
 
-    return await this.db.all(sql, params)
+    const raw = await this.db.all(sql, params)
+
+    const entities: any[] = []
+    for (const r of raw) {
+      entities.push(Object.values(this.et.fields).reduce((acc, f) => {
+        acc[f.code] = r[f.column]
+        return acc
+      }, {} as any))
+    }
+
+    return entities
   }
 }
 
+// TODO Should this fluent interface be a single function?
 class UpdateBuilder {
   private db: Database
   private et: EntityMeta
@@ -78,13 +90,14 @@ class UpdateBuilder {
     const ids = Object.values(this.et.fields)
       .filter(ft => ft.identifier)
       .map(ft => ({
-        field: ft.code,
+        code: ft.code,
+        column: ft.column,
         value: this._data[ft.code],
       }))
-    ids.forEach(({ field, value }) => {
+    ids.forEach(({ code, value }) => {
       if (value !== null && value !== undefined) return
       throw new Error(
-        `The data provided does not define the identifier '${field}'`,
+        `The data provided does not define the identifier '${code}'`,
       )
     })
     if (!ids.length) throw new Error(
@@ -95,17 +108,17 @@ class UpdateBuilder {
       .values(this.et.fields)
       .filter(ft => !ft.identifier)
       .map(ft => ({
-        field: ft.code,
+        column: ft.column,
         value: this._data[ft.code],
       }))
       // Null values should still be updated
       .filter(({ value }) => value !== undefined)
 
     const setClause = '\nSET ' +
-      fieldsToUpdate.map(({ field }) => `${field} = ?`).join(', ')
+      fieldsToUpdate.map(({ column }) => `${column} = ?`).join(', ')
     const whereClause = '\nWHERE ' +
-      ids.map(({ field }) => `${field} = ?`).join(' AND ')
-    const sql = `UPDATE ${this.et.code}` + setClause + whereClause
+      ids.map(({ column }) => `${column} = ?`).join(' AND ')
+    const sql = `UPDATE ${this.et.table}` + setClause + whereClause
     const params = [
       ...fieldsToUpdate.map(({ value }) => value),
       ...ids.map(({ value }) => value),

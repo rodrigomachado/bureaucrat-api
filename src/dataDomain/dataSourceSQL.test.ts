@@ -7,20 +7,24 @@ import { trimMargin } from '../jsext/strings'
 
 describe('Read SQL', () => {
   test('Read all SQL render', async () => {
-    const all = jest.fn((sql: string) => Promise.resolve())
-    await DataSource.read({ all } as any, { code: 'user' } as any).all()
+    const all = jest.fn((sql: string) => Promise.resolve([]))
+    await DataSource.read(
+      { all } as any,
+      { code: 'user', table: 'user' } as any,
+    ).all()
     expect(all.mock.calls).toHaveLength(1)
     expect(all.mock.calls[0][0]).toBe('SELECT * FROM user')
   })
 
   test('Read where ID SQL render', async () => {
-    const all = jest.fn((_: string, params: any[]) => Promise.resolve())
+    const all = jest.fn((_: string, params: any[]) => Promise.resolve([]))
     await DataSource
       .read(
         { all } as any,
         {
           code: 'feature',
-          fields: { id: { code: 'id', identifier: true } },
+          table: 'feature',
+          fields: { id: { code: 'id', column: 'id', identifier: true } },
         } as any)
       .ids([1])
       .all()
@@ -30,10 +34,10 @@ describe('Read SQL', () => {
   })
 
   test('Read first row SQL render', async () => {
-    const all = jest.fn((_: string) => Promise.resolve())
+    const all = jest.fn((_: string) => Promise.resolve([]))
     await DataSource.read(
       { all } as any,
-      { code: 'feature' } as any,
+      { code: 'feature', table: 'feature' } as any,
     ).limit(1).all()
     expect(all.mock.calls).toHaveLength(1)
     expect(all.mock.calls[0][0]).toBe('SELECT * FROM feature LIMIT 1')
@@ -48,7 +52,7 @@ describe('Update SQL', () => {
     const run = jest.fn(
       (sql: string, data: any[]) => Promise.resolve({ changes: 1 }),
     )
-    const et = { code: 'user', fields } as any
+    const et = { code: 'user', table: 'user', fields } as any
     await DataSource.update({ run } as any, et).data(data).execute()
     expect(run.mock.calls).toHaveLength(1)
     expect(run.mock.calls[0]).toEqual([expectedSQL, expectedParams])
@@ -74,11 +78,11 @@ describe('Update SQL', () => {
   test('Update simple entity', testUpdateSuccessful(
     {
       id: {
-        id: 0, name: 'id', code: 'id',
+        id: 0, name: 'id', code: 'id', column: 'id',
         identifier: true, type: FieldType.NUMBER,
       },
       name: {
-        id: 1, name: 'name', code: 'name',
+        id: 1, name: 'name', code: 'name', column: 'name',
         identifier: false, type: FieldType.STRING,
       },
     },
@@ -94,15 +98,15 @@ describe('Update SQL', () => {
   test('Update entity with multiple IDs', testUpdateSuccessful(
     {
       id1: {
-        id: 0, name: 'id1', code: 'id1',
+        id: 0, name: 'id1', code: 'id1', column: 'id1',
         identifier: true, type: FieldType.NUMBER,
       },
       id2: {
-        id: 0, name: 'id2', code: 'id2',
+        id: 0, name: 'id2', code: 'id2', column: 'id2',
         identifier: true, type: FieldType.NUMBER,
       },
       name: {
-        id: 1, name: 'name', code: 'name',
+        id: 1, name: 'name', code: 'name', column: 'name',
         identifier: false, type: FieldType.STRING,
       },
     },
@@ -118,15 +122,15 @@ describe('Update SQL', () => {
   test('Update entity with multiple fields', testUpdateSuccessful(
     {
       id: {
-        id: 0, name: 'id', code: 'id',
+        id: 0, name: 'id', code: 'id', column: 'id',
         identifier: true, type: FieldType.NUMBER,
       },
       first_name: {
-        id: 1, name: 'first_name', code: 'first_name',
+        id: 1, name: 'first_name', code: 'first_name', column: 'first_name',
         identifier: false, type: FieldType.STRING,
       },
       last_name: {
-        id: 2, name: 'last_name', code: 'last_name',
+        id: 2, name: 'last_name', code: 'last_name', column: 'last_name',
         identifier: false, type: FieldType.STRING,
       },
     },
@@ -164,15 +168,15 @@ describe('Update SQL', () => {
     // Fields set to null should update
     {
       id: {
-        id: 0, name: 'id', code: 'id',
+        id: 0, name: 'id', code: 'id', column: 'id',
         identifier: true, type: FieldType.NUMBER,
       },
       first_name: {
-        id: 1, name: 'first_name', code: 'first_name',
+        id: 1, name: 'first_name', code: 'first_name', column: 'first_name',
         identifier: false, type: FieldType.STRING,
       },
       last_name: {
-        id: 2, name: 'last_name', code: 'last_name',
+        id: 2, name: 'last_name', code: 'last_name', column: 'last_name',
         identifier: false, type: FieldType.STRING,
       },
     },

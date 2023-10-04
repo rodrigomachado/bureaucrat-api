@@ -3,13 +3,13 @@ import { log } from 'console'
 import { DataSource } from './dataSourceSQL'
 import { Database } from '../db/sqlite3.promises'
 import { populateDB } from '../exampleDataDomain'
-import { toCapitalizedSpaced } from '../jsext/strings'
+import { toCapitalizedSpaced, trimMargin } from '../jsext/strings'
 
 export type EntityMeta = {
   id: number,
   name: string,
   code: string,
-  // TODO Immutable `table` field, allowing `code` to be overriden by the user
+  table: string,
   titleFormat: { title: string, subtitle: string },
   fields: {
     [name: string]: FieldMeta,
@@ -20,6 +20,7 @@ export type FieldMeta = {
   id: number,
   name: string,
   code: string,
+  column: string,
   placeholder: string,
   type: FieldType,
   identifier: boolean,
@@ -121,6 +122,7 @@ export class DataDomain {
       const et: EntityMeta = {
         name: toCapitalizedSpaced(table),
         code: table,
+        table,
         fields: {},
       } as any
 
@@ -134,12 +136,13 @@ export class DataDomain {
       // TODO Validate `fields` shape?
       for (const f of fields) {
         const isID = f.pk === 1
-        const code = f.name
+        const column = f.name
         const ft: FieldMeta = {
-          name: toCapitalizedSpaced(code),
-          code,
+          name: toCapitalizedSpaced(column),
+          code: column,
+          column,
           placeholder: (
-            isID ? null : fieldExamples && fieldExamples[code] || null
+            isID ? null : fieldExamples && fieldExamples[column] || null
           ),
           type: sqliteTypeToFieldType(f.type),
           identifier: isID,
@@ -162,21 +165,27 @@ export class DataDomain {
       const metaDB = await this.metaDB()
 
       // Save to the `entityType` table
-      const { lastID: entityID } = await metaDB.run(`
-        INSERT INTO entityType(name,code,titleFormatTitle,titleFormatSubtitle)
-        VALUES (?,?,?,?)
-      `, [et.name, et.code, et.titleFormat.title, et.titleFormat.subtitle])
+      const { lastID: entityID } = await metaDB.run(trimMargin`
+        |INSERT INTO entityType(
+        |  name,code,'table',titleFormatTitle,titleFormatSubtitle
+        |)
+        |VALUES (?,?,?,?,?)
+      `, [
+        et.name, et.code, et.table,
+        et.titleFormat.title, et.titleFormat.subtitle,
+      ])
       et.id = entityID
 
       // Save to the `fieldTypes` table
       for (const f of Object.values(et.fields)) {
-        const { lastID: fieldID } = await metaDB.run(`
-          INSERT INTO fieldType(
-            entityTypeId,name,code,placeholder,type,identifier,hidden
-          )
-          VALUES (?,?,?,?,?,?,?)
+        const { lastID: fieldID } = await metaDB.run(trimMargin`
+          |INSERT INTO fieldType(
+          |  entityTypeId,name,code,column,placeholder,type,identifier,hidden
+          |)
+          |VALUES (?,?,?,?,?,?,?,?)
         `, [
-          et.id, f.name, f.code, f.placeholder, f.type, f.identifier, f.hidden,
+          et.id, f.name, f.code, f.column,
+          f.placeholder, f.type, f.identifier, f.hidden,
         ])
         f.id = fieldID
       }
@@ -241,6 +250,7 @@ export class DataDomain {
       id: et.id,
       name: et.name,
       code: et.code,
+      table: et.table,
       titleFormat: {
         title: et.titleFormatTitle,
         subtitle: et.titleFormatSubtitle,
@@ -258,6 +268,7 @@ export class DataDomain {
           id: f.id,
           name: f.name,
           code: f.code,
+          column: f.column,
           placeholder: f.placeholder,
           type: f.type,
           identifier: f.identifier,
@@ -305,31 +316,33 @@ async function createMetaDB(db: Database) {
 
 async function createEntityTypeTable(db: Database): Promise<void> {
   // TODO Introduce UUID field to prevent leaking db schema size?
-  await db.run(`
-    CREATE TABLE entityType (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT,
-      code TEXT,
-      titleFormatTitle TEXT,
-      titleFormatSubtitle TEXT
-    )
+  await db.run(trimMargin`
+    |CREATE TABLE entityType (
+    |  id INTEGER PRIMARY KEY AUTOINCREMENT,
+    |  name TEXT,
+    |  code TEXT,
+    |  'table' TEXT,
+    |  titleFormatTitle TEXT,
+    |  titleFormatSubtitle TEXT
+    |)
   `)
 }
 
 async function createFieldTypeTable(db: Database): Promise<void> {
   // TODO Introduce UUID field to prevent leaking db schema size?
-  await db.run(`
-    CREATE TABLE fieldType (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      entityTypeId INTEGER,
-      name TEXT,
-      code TEXT,
-      placeholder TEXT,
-      type TEXT,
-      identifier INTEGER(1),
-      hidden INTEGER(1),
-      FOREIGN KEY(entityTypeId) REFERENCES entityType(id)
-    )
+  await db.run(trimMargin`
+    |CREATE TABLE fieldType (
+    |  id INTEGER PRIMARY KEY AUTOINCREMENT,
+    |  entityTypeId INTEGER,
+    |  name TEXT,
+    |  code TEXT,
+    |  column TEXT,
+    |  placeholder TEXT,
+    |  type TEXT,
+    |  identifier INTEGER(1),
+    |  hidden INTEGER(1),
+    |  FOREIGN KEY(entityTypeId) REFERENCES entityType(id)
+    |)
   `)
 }
 

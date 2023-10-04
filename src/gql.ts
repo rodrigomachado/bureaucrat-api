@@ -123,8 +123,6 @@ export function schema(): GraphQLSchema {
         args: {
           entityType: { type: GraphQLString },
         },
-        // TODO Report and translate internal errors
-        // Implementation details should not be exposed in the GraphQL interface
         resolve(source, { entityType }, { dataDomain }) {
           return dataDomain.read(entityType)
         },
@@ -142,6 +140,12 @@ export function schema(): GraphQLSchema {
           entityTypeCode: { type: GraphQLString },
           data: { type: GraphQLJSONObject },
         },
+        // TODO Report and translate internal exceptions
+        // Non catastrophic errors (exceptions) should be properly communicated
+        // and handled.
+        // Handle:
+        // - Entity not found
+        // - Entity type not found
         resolve(source, { entityTypeCode, data }, { dataDomain }) {
           return dataDomain.update(entityTypeCode, data)
         },

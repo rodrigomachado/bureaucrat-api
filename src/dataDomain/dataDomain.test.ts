@@ -14,25 +14,31 @@ describe('DataDomain.entityTypes', () => {
 
     expect(ets[0].code).toBe('user')
     expect(ets[0].name).toBe('User')
+    expect(ets[0].table).toBe('user')
     expect(ets[0].fields).toEqual({
       id: {
-        name: 'Id', code: 'id', placeholder: null,
+        name: 'Id', code: 'id', column: 'id',
+        placeholder: null,
         type: 'number', identifier: true, hidden: true, id: 1,
       },
       first_name: {
-        name: 'First Name', code: 'first_name', placeholder: 'Douglas',
+        name: 'First Name', code: 'first_name', column: 'first_name',
+        placeholder: 'Douglas',
         type: 'string', identifier: false, hidden: false, id: 3,
       },
       middle_name: {
-        name: 'Middle Name', code: 'middle_name', placeholder: 'Noël',
+        name: 'Middle Name', code: 'middle_name', column: 'middle_name',
+        placeholder: 'Noël',
         type: 'string', identifier: false, hidden: false, id: 5,
       },
       last_name: {
-        name: 'Last Name', code: 'last_name', placeholder: 'Adams',
+        name: 'Last Name', code: 'last_name', column: 'last_name',
+        placeholder: 'Adams',
         type: 'string', identifier: false, hidden: false, id: 7,
       },
       birth_date: {
-        name: 'Birth Date', code: 'birth_date', placeholder: '1767-07-11',
+        name: 'Birth Date', code: 'birth_date', column: 'birth_date',
+        placeholder: '1767-07-11',
         type: 'string', identifier: false, hidden: false, id: 8,
       },
     })
@@ -43,17 +49,18 @@ describe('DataDomain.entityTypes', () => {
 
     expect(ets[1].code).toBe('feature')
     expect(ets[1].name).toBe('Feature')
+    expect(ets[1].table).toBe('feature')
     expect(ets[1].fields).toEqual({
       id: {
-        name: 'Id', code: 'id', placeholder: null,
+        name: 'Id', code: 'id', column: 'id', placeholder: null,
         type: 'number', identifier: true, hidden: true, id: 2,
       },
       name: {
-        name: 'Name', code: 'name', placeholder: 'CreateUser',
+        name: 'Name', code: 'name', column: 'name', placeholder: 'CreateUser',
         type: 'string', identifier: false, hidden: false, id: 4,
       },
       path: {
-        name: 'Path', code: 'path', placeholder: 'user',
+        name: 'Path', code: 'path', column: 'path', placeholder: 'user',
         type: 'string', identifier: false, hidden: false, id: 6,
       },
     })
@@ -114,6 +121,8 @@ describe('DataDomain.read', () => {
     es = await dd.read(et.code, { limit: 2 })
     expect(es).toHaveLength(2)
   })
+
+  // TODO Test read with overriden entity/field codes
 })
 
 describe('DataDomain.update', () => {
@@ -131,4 +140,6 @@ describe('DataDomain.update', () => {
       'birth_date': '1767-07-11',
     })
   })
+
+  // TODO Test update with overriden entity/field codes
 })
