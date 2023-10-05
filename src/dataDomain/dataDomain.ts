@@ -2,7 +2,6 @@ import { log } from 'console'
 
 import { DataSource } from './dataSourceSQL'
 import { Database } from '../db/sqlite3.promises'
-import { populateDB } from '../exampleDataDomain'
 import { toCapitalizedSpaced, trimMargin } from '../jsext/strings'
 
 export type EntityMeta = {
@@ -45,7 +44,14 @@ export enum FieldType {
  * first inspection.
  */
 export class DataDomain {
+  private metaDB: Database
+  private domainDB: Database
   private _entityTypes: Promise<EntityMeta[]> | undefined // Entity Types cache
+
+  constructor(metaDB: Database, domainDB: Database) {
+    this.metaDB = metaDB
+    this.domainDB = domainDB
+  }
 
   /**
    * Returns all the entity types in the data domain.
@@ -83,7 +89,7 @@ export class DataDomain {
     entityTypeCode: string, { ids, limit }: ReadOptions = {},
   ): Promise<any[]> {
     const ds = DataSource.read(
-      await this.domainDB(),
+      this.domainDB,
       await this.entityType(entityTypeCode),
     )
     if (ids) ds.ids(ids)
@@ -96,14 +102,14 @@ export class DataDomain {
     // Ex: idData evaluation
     const et = await this.entityType(entityTypeCode)
 
-    const db = DataSource.update(await this.domainDB(), et)
+    const db = DataSource.update(this.domainDB, et)
     db.data(data)
     await db.execute()
 
     const idData = Object.values(et.fields)
       .filter(f => f.identifier).map(f => data[f.code])
     const entities = await DataSource.read(
-      await this.domainDB(), et,
+      this.domainDB, et,
     ).ids(idData).all()
     return entities[0]
   }
@@ -113,11 +119,6 @@ export class DataDomain {
    * its metadata.
    */
   private async introspect(unmappedTables: string[]): Promise<EntityMeta[]> {
-    // TODO Also use domainDB data, along with metadata tables, to infer
-    // metadata
-
-    const domainDB = await this.domainDB()
-
     return await Promise.all(unmappedTables.map((async table => {
       const et: EntityMeta = {
         name: toCapitalizedSpaced(table),
@@ -126,11 +127,11 @@ export class DataDomain {
         fields: {},
       } as any
 
-      const [fieldExamples] = await domainDB.all(
+      const [fieldExamples] = await this.domainDB.all(
         `SELECT * FROM ${table} LIMIT 1`,
       )
 
-      const fields = await domainDB.all(
+      const fields = await this.domainDB.all(
         'SELECT * FROM PRAGMA_TABLE_INFO(?)', [table],
       )
       // TODO Validate `fields` shape?
@@ -162,10 +163,8 @@ export class DataDomain {
         subtitle: formatFirstNFields(3),
       }
 
-      const metaDB = await this.metaDB()
-
       // Save to the `entityType` table
-      const { lastID: entityID } = await metaDB.run(trimMargin`
+      const { lastID: entityID } = await this.metaDB.run(trimMargin`
         |INSERT INTO entityType(
         |  name,code,'table',titleFormatTitle,titleFormatSubtitle
         |)
@@ -178,7 +177,7 @@ export class DataDomain {
 
       // Save to the `fieldTypes` table
       for (const f of Object.values(et.fields)) {
-        const { lastID: fieldID } = await metaDB.run(trimMargin`
+        const { lastID: fieldID } = await this.metaDB.run(trimMargin`
           |INSERT INTO fieldType(
           |  entityTypeId,name,code,column,placeholder,type,identifier,hidden
           |)
@@ -194,58 +193,10 @@ export class DataDomain {
     })))
   }
 
-  /**
-   * Lazy loads the database connection to the meta DB.
-   * 
-   * It will assure that all needed tables were created.
-   */
-  private async metaDB(): Promise<Database> {
-    return await this.loadDB('_metaDB', createMetaDB)
-  }
-
-  /**
-   * Lazy loads the database connection to the data domain.
-   * 
-   * It may create the schema and populate the data domain with the example data
-   * domain if the `CREATE_EXAMPLE_DATA_DOMAIN` env var is set to `TRUE`.
-   */
-  private async domainDB(): Promise<Database> {
-    return this.loadDB(
-      '_domainDB',
-      process.env.CREATE_EXAMPLE_DATA_DOMAIN === 'TRUE' ? populateDB : null,
-    )
-  }
-
-  /**
-   * Lazy loads a database.
-   * Optionally it can create the database schema / populate initial data on
-   * first load.
-   */
-  private async loadDB(
-    cacheField: string,
-    createFn: ((db: Database) => Promise<void>) | null
-  ): Promise<Database> {
-    const get = (): Promise<Database> | null => (this as any)[cacheField]
-    const set = (value: Promise<Database>) => (this as any)[cacheField] = value
-
-    let db = get()
-    if (db) return db
-    db = (async () => {
-      const db = await Database.connect(':memory:')
-      if (createFn) await createFn(db)
-      return db
-    })()
-    set(db)
-
-    return db
-  }
-
   private async mappedEntityTypes(): Promise<EntityMeta[]> {
-    const metaDB = await this.metaDB()
-
     // Read `entityType` table
     const entityTypes: EntityMeta[] = (
-      await metaDB.all('SELECT * FROM entityType')
+      await this.metaDB.all('SELECT * FROM entityType')
     ).map((et: any) => ({
       id: et.id,
       name: et.name,
@@ -260,7 +211,7 @@ export class DataDomain {
 
     // Read fields for each entity type
     await Promise.all(entityTypes.map(async et => {
-      const fields = await metaDB.all(
+      const fields = await this.metaDB.all(
         'SELECT * FROM fieldType WHERE entityTypeId = ?', [et.id],
       )
       for (const f of fields) {
@@ -282,8 +233,7 @@ export class DataDomain {
 
   private async unmappedTables(entityTypes: EntityMeta[]): Promise<string[]> {
     // Check entityTypes completion
-    const domainDB = await this.domainDB()
-    const allTables = await domainDB.listAllTables()
+    const allTables = await this.domainDB.listAllTables()
     const mappedTables = entityTypes.map(x => x.code)
     const systemTables = ['sqlite_sequence']
     const unmappedTables = allTables
@@ -300,7 +250,7 @@ type ReadOptions = {
 }
 
 
-async function createMetaDB(db: Database) {
+export async function createMetaDB(db: Database) {
   const tables = await db.listAllTables()
   const setupTable = async (
     name: string, createFN: (db: Database) => Promise<void>,

@@ -1,14 +1,12 @@
-import { DataDomain } from '.'
+import { DataDomain, createMetaDB } from '.'
+import { Database } from '../db/sqlite3.promises'
+import { populateDB } from '../exampleDataDomain'
 
 process.env.CREATE_EXAMPLE_DATA_DOMAIN = 'TRUE'
 
 describe('DataDomain.entityTypes', () => {
   test('list entity types', async () => {
-    // TODO Decouple data domain DB loading and population from DataDomain
-    // (should be injected)
-    // TODO Decouple meta DB loading from DataDomain (should be injected)
-
-    const dd = new DataDomain()
+    const dd = new DataDomain(await mockMetaDB(), await mockDomainDB())
     const ets = await dd.entityTypes()
     expect(ets).toHaveLength(2)
 
@@ -73,7 +71,7 @@ describe('DataDomain.entityTypes', () => {
 
 describe('DataDomain.read', () => {
   test('read all entities', async () => {
-    const dd = new DataDomain()
+    const dd = new DataDomain(await mockMetaDB(), await mockDomainDB())
     const et = await dd.entityType('user')
     const es = await dd.read(et.code)
     expect(es).toHaveLength(5)
@@ -87,7 +85,7 @@ describe('DataDomain.read', () => {
   })
 
   test('read ids', async () => {
-    const dd = new DataDomain()
+    const dd = new DataDomain(await mockMetaDB(), await mockDomainDB())
     const et = await dd.entityType('user')
     const es = await dd.read(et.code, { ids: [1] })
     expect(es).toEqual([{
@@ -101,7 +99,7 @@ describe('DataDomain.read', () => {
 
   test('read ids: ids length mismatch', async () => {
     try {
-      const dd = new DataDomain()
+      const dd = new DataDomain(await mockMetaDB(), await mockDomainDB())
       const et = await dd.entityType('user')
       await dd.read(et.code, { ids: [1, 2] })
       fail('Expected an error to be thrown')
@@ -113,7 +111,7 @@ describe('DataDomain.read', () => {
   })
 
   test('read limit', async () => {
-    const dd = new DataDomain()
+    const dd = new DataDomain(await mockMetaDB(), await mockDomainDB())
     const et = await dd.entityType('user')
     let es
     es = await dd.read(et.code, { limit: 1 })
@@ -127,7 +125,7 @@ describe('DataDomain.read', () => {
 
 describe('DataDomain.update', () => {
   test('update one field', async () => {
-    const dd = new DataDomain()
+    const dd = new DataDomain(await mockMetaDB(), await mockDomainDB())
     const et = await dd.entityType('user')
     let e
     [e] = await dd.read(et.code, { limit: 1 })
@@ -143,3 +141,15 @@ describe('DataDomain.update', () => {
 
   // TODO Test update with overriden entity/field codes
 })
+
+async function mockMetaDB(): Promise<Database> {
+  const db = await Database.connect(':memory:')
+  await createMetaDB(db)
+  return db
+}
+
+async function mockDomainDB(): Promise<Database> {
+  const db = await Database.connect(':memory:')
+  await populateDB(db)
+  return db
+}

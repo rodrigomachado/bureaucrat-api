@@ -36,7 +36,6 @@ class ReadBuilder {
   async all(): Promise<any[]> {
     // TODO Validate schema of returned data?
     // TODO Use specific projection to fetch entities?
-    // TODO Hide table name from UI? (dedicated EntityType#table field?)
 
     const params: any[] = []
     let sql = `SELECT * FROM ${this.et.table}`

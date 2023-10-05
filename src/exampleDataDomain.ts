@@ -29,7 +29,7 @@ export async function populateDB(db: sql3.Database): Promise<void> {
   await createTable('users', createUsers)
   await createTable('features', createFeatures)
 
-  log(`Tables: ${await db.listAllTables()}`)
+  log(`DomainDB Tables: ${await db.listAllTables()}`)
 }
 
 async function createUsers(db: sql3.Database): Promise<void> {

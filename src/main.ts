@@ -3,12 +3,22 @@ import 'dotenv/config'
 import express from 'express'
 import { createHandler } from 'graphql-http/lib/use/express'
 
-import { DataDomain } from './dataDomain'
+import { DataDomain, createMetaDB } from './dataDomain'
+import { Database } from './db/sqlite3.promises'
+import { populateDB } from './exampleDataDomain'
 import { schema } from './gql'
 
 export default async function main() {
   try {
-    const dataDomain = new DataDomain()
+    const metaDB = await Database.connect(':memory:')
+    await createMetaDB(metaDB)
+
+    const domainDB = await Database.connect(':memory:')
+    if (process.env.CREATE_EXAMPLE_DATA_DOMAIN === 'TRUE') {
+      await populateDB(domainDB)
+    }
+
+    const dataDomain = new DataDomain(metaDB, domainDB)
     const app = express()
 
     app.use(cors())
