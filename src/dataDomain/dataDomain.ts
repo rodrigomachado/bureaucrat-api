@@ -5,6 +5,7 @@ import { Database } from '../db/sqlite3.promises'
 import { toCapitalizedSpaced, trimMargin } from '../jsext/strings'
 
 export type EntityMeta = {
+  // TODO Merge `id` and `code`
   id: number,
   name: string,
   code: string,
@@ -16,6 +17,7 @@ export type EntityMeta = {
 }
 
 export type FieldMeta = {
+  // TODO Merge `id` and `code`
   id: number,
   name: string,
   code: string,
@@ -215,7 +217,7 @@ export class DataDomain {
         'SELECT * FROM fieldType WHERE entityTypeId = ?', [et.id],
       )
       for (const f of fields) {
-        et.fields[f.name] = {
+        et.fields[f.code] = {
           id: f.id,
           name: f.name,
           code: f.code,
