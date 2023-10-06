@@ -5,7 +5,6 @@ import { Database } from '../db/sqlite3.promises'
 import { toCapitalizedSpaced, trimMargin } from '../jsext/strings'
 
 export type EntityMeta = {
-  // TODO Merge `id` and `code`
   id: number,
   name: string,
   code: string,
@@ -17,7 +16,6 @@ export type EntityMeta = {
 }
 
 export type FieldMeta = {
-  // TODO Merge `id` and `code`
   id: number,
   name: string,
   code: string,
@@ -267,12 +265,11 @@ export async function createMetaDB(db: Database) {
 }
 
 async function createEntityTypeTable(db: Database): Promise<void> {
-  // TODO Introduce UUID field to prevent leaking db schema size?
   await db.run(trimMargin`
     |CREATE TABLE entityType (
     |  id INTEGER PRIMARY KEY AUTOINCREMENT,
+    |  code TEXT UNIQUE,
     |  name TEXT,
-    |  code TEXT,
     |  'table' TEXT,
     |  titleFormatTitle TEXT,
     |  titleFormatSubtitle TEXT
@@ -281,7 +278,6 @@ async function createEntityTypeTable(db: Database): Promise<void> {
 }
 
 async function createFieldTypeTable(db: Database): Promise<void> {
-  // TODO Introduce UUID field to prevent leaking db schema size?
   await db.run(trimMargin`
     |CREATE TABLE fieldType (
     |  id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -294,6 +290,7 @@ async function createFieldTypeTable(db: Database): Promise<void> {
     |  identifier INTEGER(1),
     |  hidden INTEGER(1),
     |  FOREIGN KEY(entityTypeId) REFERENCES entityType(id)
+    |  UNIQUE(entityTypeId,code)
     |)
   `)
 }

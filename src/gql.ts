@@ -25,16 +25,12 @@ export function schema(): GraphQLSchema {
     name: 'FieldMeta',
     description: 'Description (metadata) of an entity field.',
     fields: {
-      id: {
+      code: {
         description: 'Unique identifier of the field within the entity',
-        type: GraphQLInt,
+        type: GraphQLString,
       },
       name: {
         description: 'Human readable name of the field.',
-        type: GraphQLString,
-      },
-      code: {
-        description: 'Key of the field in an entity data JSON',
         type: GraphQLString,
       },
       placeholder: {
@@ -83,16 +79,12 @@ export function schema(): GraphQLSchema {
     name: 'EntityMeta',
     description: 'Description (metadata) of an entity.',
     fields: {
-      id: {
-        description: 'Unique identifier of the entity.',
-        type: GraphQLInt,
+      code: {
+        description: 'Unique identifier of the entity',
+        type: GraphQLString,
       },
       name: {
         description: 'Human readable name of the entity.',
-        type: GraphQLString,
-      },
-      code: {
-        description: 'Unique code of the entity.',
         type: GraphQLString,
       },
       titleFormat: {

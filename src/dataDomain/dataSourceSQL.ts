@@ -11,7 +11,6 @@ export const DataSource = {
   ) => new UpdateBuilder(db, entityType),
 }
 
-// TODO Should this fluent interface be a single function?
 class ReadBuilder {
   private db: Database
   private et: EntityMeta
@@ -69,7 +68,6 @@ class ReadBuilder {
   }
 }
 
-// TODO Should this fluent interface be a single function?
 class UpdateBuilder {
   private db: Database
   private et: EntityMeta
