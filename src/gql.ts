@@ -1,6 +1,5 @@
 import {
-  GraphQLBoolean, GraphQLInt,
-  GraphQLList, GraphQLObjectType, GraphQLSchema, GraphQLString,
+  GraphQLBoolean, GraphQLList, GraphQLObjectType, GraphQLSchema, GraphQLString,
 } from 'graphql'
 import { GraphQLJSONObject } from 'graphql-type-json'
 
