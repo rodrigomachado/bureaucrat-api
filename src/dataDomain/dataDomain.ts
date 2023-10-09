@@ -102,9 +102,48 @@ export class DataDomain {
     // Ex: idData evaluation
     const et = await this.entityType(entityTypeCode)
 
-    const db = DataSource.update(this.domainDB, et)
-    db.data(data)
-    await db.execute()
+    const ids = Object.values(et.fields)
+      .filter(ft => ft.identifier)
+      .map(ft => ({
+        code: ft.code,
+        column: ft.column,
+        value: data[ft.code],
+      }))
+    ids.forEach(({ code, value }) => {
+      if (value !== null && value !== undefined) return
+      throw new Error(
+        `The data provided does not define the identifier '${code}'`,
+      )
+    })
+    if (!ids.length) throw new Error(
+      'Unable to uniquely identify an entity: it has no identifier fields',
+    )
+
+    const fieldsToUpdate = Object
+      .values(et.fields)
+      .filter(ft => !ft.identifier)
+      .map(ft => ({
+        column: ft.column,
+        value: data[ft.code],
+      }))
+      // Null values should still be updated
+      .filter(({ value }) => value !== undefined)
+
+    const setClause = '\nSET ' +
+      fieldsToUpdate.map(({ column }) => `${column} = ?`).join(', ')
+    const whereClause = '\nWHERE ' +
+      ids.map(({ column }) => `${column} = ?`).join(' AND ')
+    const sql = `UPDATE ${et.table}` + setClause + whereClause
+    const params = [
+      ...fieldsToUpdate.map(({ value }) => value),
+      ...ids.map(({ value }) => value),
+    ]
+
+    const result = await this.domainDB.run(sql, params)
+    if (result.changes !== 1) throw new Error(
+      'Data update expected to change a single value ' +
+      `but it changed ${result.changes}`
+    )
 
     const idData = Object.values(et.fields)
       .filter(f => f.identifier).map(f => data[f.code])

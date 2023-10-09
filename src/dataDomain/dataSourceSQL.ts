@@ -6,9 +6,6 @@ export const DataSource = {
   read: (
     db: Database, entityType: EntityMeta,
   ) => new ReadBuilder(db, entityType),
-  update: (
-    db: Database, entityType: EntityMeta,
-  ) => new UpdateBuilder(db, entityType),
 }
 
 class ReadBuilder {
@@ -65,66 +62,5 @@ class ReadBuilder {
     }
 
     return entities
-  }
-}
-
-class UpdateBuilder {
-  private db: Database
-  private et: EntityMeta
-  private _data: any
-
-  constructor(db: Database, entityType: EntityMeta) {
-    this.db = db
-    this.et = entityType
-  }
-
-  data(data: any): this {
-    this._data = data
-    return this
-  }
-
-  async execute(): Promise<void> {
-    const ids = Object.values(this.et.fields)
-      .filter(ft => ft.identifier)
-      .map(ft => ({
-        code: ft.code,
-        column: ft.column,
-        value: this._data[ft.code],
-      }))
-    ids.forEach(({ code, value }) => {
-      if (value !== null && value !== undefined) return
-      throw new Error(
-        `The data provided does not define the identifier '${code}'`,
-      )
-    })
-    if (!ids.length) throw new Error(
-      'Unable to uniquely identify an entity: it has no identifier fields',
-    )
-
-    const fieldsToUpdate = Object
-      .values(this.et.fields)
-      .filter(ft => !ft.identifier)
-      .map(ft => ({
-        column: ft.column,
-        value: this._data[ft.code],
-      }))
-      // Null values should still be updated
-      .filter(({ value }) => value !== undefined)
-
-    const setClause = '\nSET ' +
-      fieldsToUpdate.map(({ column }) => `${column} = ?`).join(', ')
-    const whereClause = '\nWHERE ' +
-      ids.map(({ column }) => `${column} = ?`).join(' AND ')
-    const sql = `UPDATE ${this.et.table}` + setClause + whereClause
-    const params = [
-      ...fieldsToUpdate.map(({ value }) => value),
-      ...ids.map(({ value }) => value),
-    ]
-
-    const result = await this.db.run(sql, params)
-    if (result.changes !== 1) throw new Error(
-      'Data update expected to change a single value ' +
-      `but it changed ${result.changes}`
-    )
   }
 }
