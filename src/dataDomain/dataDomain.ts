@@ -1,8 +1,9 @@
 import { log } from 'console'
 
-import { DataSource } from './dataSourceSQL'
 import { Database } from '../db/sqlite3.promises'
-import { toCapitalizedSpaced, trimMargin } from '../jsext/strings'
+import {
+  toCapitalizedSpaced, trimMargin, pluralize,
+} from '../jsext/strings'
 
 export type EntityMeta = {
   id: number,
@@ -84,17 +85,43 @@ export class DataDomain {
 
   /**
    * Reads all entries for a particular entity type.
+   * @param ids The identifiers of a **single** entity.
+   * @param limit The maximum number of entities to be returned.
    */
   async read(
     entityTypeCode: string, { ids, limit }: ReadOptions = {},
   ): Promise<any[]> {
-    const ds = DataSource.read(
-      this.domainDB,
-      await this.entityType(entityTypeCode),
-    )
-    if (ids) ds.ids(ids)
-    if (limit) ds.limit(limit)
-    return await ds.all()
+    const et = await this.entityType(entityTypeCode)
+
+    const params: any[] = []
+    let sql = `SELECT * FROM ${et.table}`
+    if (ids) {
+      const idsMeta = Object.values(et.fields).filter(f => f.identifier)
+      const idsMetaL = idsMeta.length
+      const idDataL = ids.length
+      if (idsMetaL !== idDataL) {
+        throw new Error(
+          `Invalid IDs provided (length: ${idDataL}). ` +
+          `Expected ${idsMetaL} ${pluralize(idsMeta, 'id', 'ids')}: ` +
+          `${idsMeta.map(f => `'${f.code}'`).join(', ')}`
+        )
+      }
+      sql += ' WHERE ' + idsMeta.map(f => `${f.column} = ?`).join(' AND ')
+      params.push(...ids)
+    }
+    if (limit) sql += ` LIMIT ${limit}`
+
+    const raw = await this.domainDB.all(sql, params)
+
+    const entities: any[] = []
+    for (const r of raw) {
+      entities.push(Object.values(et.fields).reduce((acc, f) => {
+        acc[f.code] = r[f.column]
+        return acc
+      }, {} as any))
+    }
+
+    return entities
   }
 
   async update(entityTypeCode: string, data: any) {
@@ -145,11 +172,14 @@ export class DataDomain {
       `but it changed ${result.changes}`
     )
 
-    const idData = Object.values(et.fields)
-      .filter(f => f.identifier).map(f => data[f.code])
-    const entities = await DataSource.read(
-      this.domainDB, et,
-    ).ids(idData).all()
+    const entities = await this.read(entityTypeCode, {
+      ids: Object.values(et.fields)
+        .filter(f => f.identifier).map(f => data[f.code]),
+    })
+    if (entities.length !== 1) throw new Error(
+      'Expected reading the entity just updated to return a single entity ' +
+      `but ${entities.length} were returned instead.`,
+    )
     return entities[0]
   }
 
