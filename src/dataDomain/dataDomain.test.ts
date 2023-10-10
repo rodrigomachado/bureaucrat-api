@@ -88,7 +88,7 @@ describe('DataDomain.read', () => {
   test('read ids', async () => {
     const dd = new DataDomain(await mockMetaDB(), await mockDomainDB())
     const et = await dd.entityType('user')
-    const es = await dd.read(et.code, { ids: [1] })
+    const es = await dd.read(et.code, { ids: { id: 1 } })
     expect(es).toEqual([{
       'id': 1,
       'first_name': 'Douglas',
@@ -98,16 +98,17 @@ describe('DataDomain.read', () => {
     }])
   })
 
-  test('read ids: ids length mismatch', async () => {
+  test('read ids: id not found', async () => {
     try {
       const dd = new DataDomain(await mockMetaDB(), await mockDomainDB())
       const et = await dd.entityType('user')
-      await dd.read(et.code, { ids: [1, 2] })
+      await dd.read(et.code, { ids: { id1: 1, id2: 2 } })
       fail('Expected an error to be thrown')
     } catch (e) {
       expect(e).toBeInstanceOf(Error)
-      expect((e as Error).message)
-        .toBe('Invalid IDs provided (length: 2). Expected 1 id: \'id\'')
+      expect((e as Error).message).toBe(
+        'Field \'id\' expected but not found in the \'ids\' provided.',
+      )
     }
   })
 

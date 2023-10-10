@@ -1,9 +1,8 @@
 import { log } from 'console'
 
 import { Database } from '../db/sqlite3.promises'
-import {
-  toCapitalizedSpaced, trimMargin, pluralize,
-} from '../jsext/strings'
+import { toCapitalizedSpaced, trimMargin } from '../jsext/strings'
+import { SelectBuilder, UpdateBuilder } from '../db/sql'
 
 export type EntityMeta = {
   id: number,
@@ -85,97 +84,65 @@ export class DataDomain {
 
   /**
    * Reads all entries for a particular entity type.
-   * @param ids The identifiers of a **single** entity.
-   * @param limit The maximum number of entities to be returned.
+   * @param opts.ids An object with the identifiers of a **single** entity. 
+   *   It may contain other fields for convenience.
+   * @param opts.limit The maximum number of entities to be returned.
    */
   async read(
     entityTypeCode: string, { ids, limit }: ReadOptions = {},
   ): Promise<any[]> {
     const et = await this.entityType(entityTypeCode)
 
-    const params: any[] = []
-    let sql = `SELECT * FROM ${et.table}`
+    const select = new SelectBuilder().from(et.table)
     if (ids) {
-      const idsMeta = Object.values(et.fields).filter(f => f.identifier)
-      const idsMetaL = idsMeta.length
-      const idDataL = ids.length
-      if (idsMetaL !== idDataL) {
-        throw new Error(
-          `Invalid IDs provided (length: ${idDataL}). ` +
-          `Expected ${idsMetaL} ${pluralize(idsMeta, 'id', 'ids')}: ` +
-          `${idsMeta.map(f => `'${f.code}'`).join(', ')}`
+      // TODO WIP extract field utilities to `EntityMeta`
+      for (const f of Object.values(et.fields).filter(f => f.identifier)) {
+        if (ids[f.code] === undefined) throw new Error(
+          `Field '${f.code}' expected but not found in the 'ids' provided.`
         )
+        select.where.equal(f.column, ids[f.code])
       }
-      sql += ' WHERE ' + idsMeta.map(f => `${f.column} = ?`).join(' AND ')
-      params.push(...ids)
     }
-    if (limit) sql += ` LIMIT ${limit}`
+    if (limit) select.limit(limit)
 
-    const raw = await this.domainDB.all(sql, params)
-
-    const entities: any[] = []
-    for (const r of raw) {
-      entities.push(Object.values(et.fields).reduce((acc, f) => {
+    const raw = await select.query(this.domainDB)
+    return raw.map(r => {
+      return Object.values(et.fields).reduce((acc, f) => {
         acc[f.code] = r[f.column]
         return acc
-      }, {} as any))
-    }
-
-    return entities
+      }, {} as any)
+    })
   }
 
+  /**
+   * Updates an entity.
+   * The provided data must define the ids to the target entity and one or more
+   * non-id fields to be updated.
+   */
   async update(entityTypeCode: string, data: any) {
-    // TODO Resolve duplication on `DataSource.read(…)` and `…update(…)`.
-    // Ex: idData evaluation
     const et = await this.entityType(entityTypeCode)
 
-    const ids = Object.values(et.fields)
-      .filter(ft => ft.identifier)
-      .map(ft => ({
-        code: ft.code,
-        column: ft.column,
-        value: data[ft.code],
-      }))
-    ids.forEach(({ code, value }) => {
-      if (value !== null && value !== undefined) return
-      throw new Error(
-        `The data provided does not define the identifier '${code}'`,
-      )
-    })
-    if (!ids.length) throw new Error(
-      'Unable to uniquely identify an entity: it has no identifier fields',
-    )
+    const update = new UpdateBuilder().table(et.table)
 
-    const fieldsToUpdate = Object
-      .values(et.fields)
-      .filter(ft => !ft.identifier)
-      .map(ft => ({
-        column: ft.column,
-        value: data[ft.code],
-      }))
-      // Null values should still be updated
-      .filter(({ value }) => value !== undefined)
+    for (const id of Object.values(et.fields).filter(f => f.identifier)) {
+      update.where.equal(id.column, data[id.code], { acceptNull: false })
+    }
 
-    const setClause = '\nSET ' +
-      fieldsToUpdate.map(({ column }) => `${column} = ?`).join(', ')
-    const whereClause = '\nWHERE ' +
-      ids.map(({ column }) => `${column} = ?`).join(' AND ')
-    const sql = `UPDATE ${et.table}` + setClause + whereClause
-    const params = [
-      ...fieldsToUpdate.map(({ value }) => value),
-      ...ids.map(({ value }) => value),
-    ]
+    const fieldsToUpdate = Object.values(et.fields)
+      .filter(ft => !ft.identifier) // Don't update identifiers
+      .filter(f => data[f.code] !== undefined) // Accept null values
 
-    const result = await this.domainDB.run(sql, params)
+    for (const f of fieldsToUpdate) {
+      update.attrib.set(f.column, data[f.code])
+    }
+
+    const result = await update.execute(this.domainDB)
     if (result.changes !== 1) throw new Error(
       'Data update expected to change a single value ' +
       `but it changed ${result.changes}`
     )
 
-    const entities = await this.read(entityTypeCode, {
-      ids: Object.values(et.fields)
-        .filter(f => f.identifier).map(f => data[f.code]),
-    })
+    const entities = await this.read(entityTypeCode, { ids: data })
     if (entities.length !== 1) throw new Error(
       'Expected reading the entity just updated to return a single entity ' +
       `but ${entities.length} were returned instead.`,
@@ -196,6 +163,7 @@ export class DataDomain {
         fields: {},
       } as any
 
+      // TODO WIP Use `SelectBuilder`
       const [fieldExamples] = await this.domainDB.all(
         `SELECT * FROM ${table} LIMIT 1`,
       )
@@ -233,6 +201,7 @@ export class DataDomain {
       }
 
       // Save to the `entityType` table
+      // TODO WIP Craft and use `InsertBuilder`
       const { lastID: entityID } = await this.metaDB.run(trimMargin`
         |INSERT INTO entityType(
         |  name,code,'table',titleFormatTitle,titleFormatSubtitle
@@ -265,6 +234,7 @@ export class DataDomain {
   private async mappedEntityTypes(): Promise<EntityMeta[]> {
     // Read `entityType` table
     const entityTypes: EntityMeta[] = (
+      // TODO WIP Use `SelectBuilder`
       await this.metaDB.all('SELECT * FROM entityType')
     ).map((et: any) => ({
       id: et.id,
@@ -280,6 +250,7 @@ export class DataDomain {
 
     // Read fields for each entity type
     await Promise.all(entityTypes.map(async et => {
+      // TODO WIP Use `SelectBuilder`
       const fields = await this.metaDB.all(
         'SELECT * FROM fieldType WHERE entityTypeId = ?', [et.id],
       )
@@ -314,7 +285,7 @@ export class DataDomain {
 }
 
 type ReadOptions = {
-  ids?: any[],
+  ids?: { [fCode: string]: any },
   limit?: number,
 }
 
@@ -334,6 +305,7 @@ export async function createMetaDB(db: Database) {
 }
 
 async function createEntityTypeTable(db: Database): Promise<void> {
+  // TODO WIP Craft and use `CreateTableBuilder`?
   await db.run(trimMargin`
     |CREATE TABLE entityType (
     |  id INTEGER PRIMARY KEY AUTOINCREMENT,
