@@ -2,7 +2,7 @@ import { log } from 'console'
 
 import { Database } from '../db/sqlite3.promises'
 import { toCapitalizedSpaced, trimMargin } from '../jsext/strings'
-import { Select, Update } from '../db/sql'
+import { Insert, Select, Update } from '../db/sql'
 
 export type EntityMeta = {
   id: number,
@@ -200,29 +200,28 @@ export class DataDomain {
       }
 
       // Save to the `entityType` table
-      // TODO WIP Craft and use `InsertBuilder`
-      const { lastID: entityID } = await this.metaDB.run(trimMargin`
-        |INSERT INTO entityType(
-        |  name,code,'table',titleFormatTitle,titleFormatSubtitle
-        |)
-        |VALUES (?,?,?,?,?)
-      `, [
-        et.name, et.code, et.table,
-        et.titleFormat.title, et.titleFormat.subtitle,
-      ])
+      const { lastID: entityID } = await new Insert()
+        .into('entityType')
+        .set('name', et.name)
+        .set('code', et.code)
+        .set('table', et.table)
+        .set('titleFormatTitle', et.titleFormat.title)
+        .set('titleFormatSubtitle', et.titleFormat.subtitle)
+        .execute(this.metaDB)
       et.id = entityID
 
       // Save to the `fieldTypes` table
       for (const f of Object.values(et.fields)) {
-        const { lastID: fieldID } = await this.metaDB.run(trimMargin`
-          |INSERT INTO fieldType(
-          |  entityTypeId,name,code,column,placeholder,type,identifier,hidden
-          |)
-          |VALUES (?,?,?,?,?,?,?,?)
-        `, [
-          et.id, f.name, f.code, f.column,
-          f.placeholder, f.type, f.identifier, f.hidden,
-        ])
+        const { lastID: fieldID } = await new Insert().into('fieldType')
+          .set('entityTypeId', et.id)
+          .set('name', f.name)
+          .set('code', f.code)
+          .set('column', f.column)
+          .set('placeholder', f.placeholder)
+          .set('type', f.type)
+          .set('identifier', f.identifier)
+          .set('hidden', f.hidden)
+          .execute(this.metaDB)
         f.id = fieldID
       }
 

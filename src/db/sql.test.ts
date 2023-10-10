@@ -1,5 +1,5 @@
 import { trimMargin } from '../jsext/strings'
-import { Select, Update } from './sql'
+import { Insert, Select, Update } from './sql'
 
 describe('Select SQL', () => {
   test('SELECT all from table', () => {
@@ -76,6 +76,45 @@ describe('Select SQL', () => {
         |LIMIT ?
       `,
       params: ['a', 'b', 100],
+    })
+  })
+})
+
+describe('Insert SQL', () => {
+  test('Simple INSERT', () => {
+    const insert = new Insert().into('table')
+    insert.set('f1', 1)
+    expect(insert.render()).toEqual({
+      sql: trimMargin`
+        |INSERT INTO \`table\`(
+        |  \`f1\`
+        |) VALUES (?)
+      `,
+      params: [1],
+    })
+  })
+
+  test('INSERT missing table', () => {
+    const insert = new Insert()
+    insert.set('f1', 1)
+    expect(() => insert.render()).toThrow('`into(…)` was never called.')
+  })
+
+  test('INSERT missing fields', () => {
+    const insert = new Insert().into('table')
+    expect(() => insert.render()).toThrow('No field value set.')
+  })
+
+  test('INSERT multiple fields', () => {
+    const insert = new Insert().into('t1')
+    insert.set('f1', 1).set('f2', 2).set('f3', 3)
+    expect(insert.render()).toEqual({
+      sql: trimMargin`
+        |INSERT INTO \`t1\`(
+        |  \`f1\`,\`f2\`,\`f3\`
+        |) VALUES (?,?,?)
+      `,
+      params: [1, 2, 3],
     })
   })
 })

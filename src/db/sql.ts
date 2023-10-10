@@ -68,6 +68,67 @@ export class Select {
 }
 
 /**
+ * Builder for INSERT INTO statements.
+ * 
+ * Ex:
+ * ```js
+ *   const insert = new Insert().into('table')
+ *   insert.set('field1', 'value1').set('field2', 'value2')
+ *   const { sql, params } = insert.render()
+ * ```
+ */
+export class Insert {
+  private _into: StaticSQL | undefined
+  private fields: string[] = []
+  private values: any[] = []
+
+  /**
+   * Specifies the table where to insert the data into.
+   */
+  into(table: string): this {
+    if (this._into) throw new Error(
+      '`into(…)` cannot be called more than once.'
+    )
+    this._into = new StaticSQL(`INSERT INTO \`${table}\``)
+    return this
+  }
+
+  /**
+   * Defines the value for a particular field in the new row being inserted.
+   */
+  set(field: string, value: any): this {
+    this.fields.push(field)
+    this.values.push(value)
+    return this
+  }
+
+  /**
+   * Renders both the sql statement and the params to be used when executing
+   * the insert statement.
+   */
+  render() {
+    if (!this._into) throw new Error('`into(…)` was never called.')
+    if (!this.fields.length) throw new Error('No field value set.')
+
+    const { sql: insertInto } = this._into.render()
+    return {
+      sql: insertInto +
+        '(\n  ' + this.fields.map(f => `\`${f}\``).join(',') + '\n) ' +
+        'VALUES (' + this.fields.map(() => '?').join(',') + ')',
+      params: this.values,
+    }
+  }
+
+  /**
+   * Executes the insert statement into the provided database.
+   */
+  async execute(db: Database) {
+    const { sql, params } = this.render()
+    return db.run(sql, params)
+  }
+}
+
+/**
  * Builder for UPDATE statements.
  * 
  * Ex:
@@ -75,6 +136,7 @@ export class Select {
  *   const update = new Update().table('table')
  *   update.where.equal('id', 1)
  *   update.attrib.set('field1', 'value')
+ *   const { sql, params } = update.render()
  * ```
  */
 export class Update {
