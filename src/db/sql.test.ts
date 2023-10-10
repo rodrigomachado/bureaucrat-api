@@ -1,9 +1,9 @@
 import { trimMargin } from '../jsext/strings'
-import { SelectBuilder, UpdateBuilder } from './sql'
+import { Select, Update } from './sql'
 
 describe('Select SQL', () => {
   test('SELECT all from table', () => {
-    const select = new SelectBuilder().from('table')
+    const select = new Select().from('table')
     expect(select.render()).toEqual({
       sql: trimMargin`
         |SELECT *
@@ -14,7 +14,7 @@ describe('Select SQL', () => {
   })
 
   test('SELECT with simple where', () => {
-    const select = new SelectBuilder().from('user')
+    const select = new Select().from('user')
     select.where.equal('id', 1)
     expect(select.render()).toEqual({
       sql: trimMargin`
@@ -27,12 +27,12 @@ describe('Select SQL', () => {
   })
 
   test('SELECT missing table', () => {
-    const select = new SelectBuilder()
+    const select = new Select()
     expect(() => select.render()).toThrow('`from(…)` never called')
   })
 
   test('SELECT with WHERE accepting nulls', () => {
-    const select = new SelectBuilder().from('features')
+    const select = new Select().from('features')
     select.where.equal('id1', null, { acceptNull: true })
     expect(select.render()).toEqual({
       sql: trimMargin`
@@ -45,14 +45,14 @@ describe('Select SQL', () => {
   })
 
   test('SELECT with WHERE not accepting nulls', () => {
-    const select = new SelectBuilder().from('users')
+    const select = new Select().from('users')
     expect(() => {
       select.where.equal('field', null)
     }).toThrow('Field \'field\' cannot be compared to \'null\'')
   })
 
   test('SELECT with LIMIT', () => {
-    const select = new SelectBuilder().from('table')
+    const select = new Select().from('table')
     select.limit(10)
     expect(select.render()).toEqual({
       sql: trimMargin`
@@ -65,7 +65,7 @@ describe('Select SQL', () => {
   })
 
   test('Complex SELECT', () => {
-    const select = new SelectBuilder().from('t1')
+    const select = new Select().from('t1')
     select.where.equal('f1', 'a').equal('f2', 'b')
     select.limit(100)
     expect(select.render()).toEqual({
@@ -82,7 +82,7 @@ describe('Select SQL', () => {
 
 describe('Update SQL', () => {
   test('Simple UPDATE', () => {
-    const update = new UpdateBuilder().table('table')
+    const update = new Update().table('table')
     update.attrib.set('f1', 1)
     update.where.equal('id1', 2)
     expect(update.render()).toEqual({
@@ -96,7 +96,7 @@ describe('Update SQL', () => {
   })
 
   test('UPDATE missing WHERE', () => {
-    const update = new UpdateBuilder().table('t1')
+    const update = new Update().table('t1')
     update.attrib.set('field', 'value')
     expect(() => update.render()).toThrow(
       'Where clause must have at least one restriction.',
@@ -104,7 +104,7 @@ describe('Update SQL', () => {
   })
 
   test('UPDATE missing SET', () => {
-    const update = new UpdateBuilder().table('t1')
+    const update = new Update().table('t1')
     update.where.equal('field', 'value')
     expect(() => update.render()).toThrow(
       'No field attribution specified.',
@@ -112,7 +112,7 @@ describe('Update SQL', () => {
   })
 
   test('UPDATE multiple WHERE multiple SET', () => {
-    const update = new UpdateBuilder().table('t2')
+    const update = new Update().table('t2')
     update.attrib.set('field1', 1).set('field2', 2)
     update.where.equal('id1', 'a').equal('id2', 'b')
     expect(update.render()).toEqual({
@@ -126,7 +126,7 @@ describe('Update SQL', () => {
   })
 
   test('UPDATE setting field to null', () => {
-    const update = new UpdateBuilder().table('table')
+    const update = new Update().table('table')
     update.attrib.set('f1', null)
     update.where.equal('id1', 2)
     expect(update.render()).toEqual({
@@ -140,7 +140,7 @@ describe('Update SQL', () => {
   })
 
   test('UPDATE with WHERE null', () => {
-    const update = new UpdateBuilder().table('table')
+    const update = new Update().table('table')
     update.attrib.set('f1', 1)
     expect(() => {
       update.where.equal('id1', null)

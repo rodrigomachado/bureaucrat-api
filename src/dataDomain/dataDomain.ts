@@ -2,7 +2,7 @@ import { log } from 'console'
 
 import { Database } from '../db/sqlite3.promises'
 import { toCapitalizedSpaced, trimMargin } from '../jsext/strings'
-import { SelectBuilder, UpdateBuilder } from '../db/sql'
+import { Select, Update } from '../db/sql'
 
 export type EntityMeta = {
   id: number,
@@ -93,7 +93,7 @@ export class DataDomain {
   ): Promise<any[]> {
     const et = await this.entityType(entityTypeCode)
 
-    const select = new SelectBuilder().from(et.table)
+    const select = new Select().from(et.table)
     if (ids) {
       // TODO WIP extract field utilities to `EntityMeta`
       for (const f of Object.values(et.fields).filter(f => f.identifier)) {
@@ -122,7 +122,7 @@ export class DataDomain {
   async update(entityTypeCode: string, data: any) {
     const et = await this.entityType(entityTypeCode)
 
-    const update = new UpdateBuilder().table(et.table)
+    const update = new Update().table(et.table)
 
     for (const id of Object.values(et.fields).filter(f => f.identifier)) {
       update.where.equal(id.column, data[id.code], { acceptNull: false })
@@ -163,9 +163,8 @@ export class DataDomain {
         fields: {},
       } as any
 
-      // TODO WIP Use `SelectBuilder`
-      const [fieldExamples] = await this.domainDB.all(
-        `SELECT * FROM ${table} LIMIT 1`,
+      const [fieldExamples] = await (
+        new Select().from(table).limit(1).query(this.domainDB)
       )
 
       const fields = await this.domainDB.all(
@@ -234,8 +233,7 @@ export class DataDomain {
   private async mappedEntityTypes(): Promise<EntityMeta[]> {
     // Read `entityType` table
     const entityTypes: EntityMeta[] = (
-      // TODO WIP Use `SelectBuilder`
-      await this.metaDB.all('SELECT * FROM entityType')
+      await new Select().from('entityType').query(this.metaDB)
     ).map((et: any) => ({
       id: et.id,
       name: et.name,
@@ -250,10 +248,9 @@ export class DataDomain {
 
     // Read fields for each entity type
     await Promise.all(entityTypes.map(async et => {
-      // TODO WIP Use `SelectBuilder`
-      const fields = await this.metaDB.all(
-        'SELECT * FROM fieldType WHERE entityTypeId = ?', [et.id],
-      )
+      const select = new Select().from('fieldType')
+      select.where.equal('entityTypeId', et.id)
+      const fields = await select.query(this.metaDB)
       for (const f of fields) {
         et.fields[f.code] = {
           id: f.id,
