@@ -103,10 +103,7 @@ export function schema(): GraphQLSchema {
       entityTypes: {
         type: new GraphQLList(gqlEntityMeta),
         async resolve(source, params, { dataDomain }) {
-          return (await dataDomain.entityTypes()).map((value) => ({
-            ...value,
-            fields: Object.values(value.fields),
-          }))
+          return dataDomain.entityTypes()
         },
       },
       entities: {

@@ -10,9 +10,7 @@ export type EntityMeta = {
   code: string,
   table: string,
   titleFormat: { title: string, subtitle: string },
-  fields: {
-    [name: string]: FieldMeta,
-  },
+  fields: FieldMeta[],
 }
 
 export type FieldMeta = {
@@ -95,8 +93,7 @@ export class DataDomain {
 
     const select = new Select().from(et.table)
     if (ids) {
-      // TODO WIP extract field utilities to `EntityMeta`
-      for (const f of Object.values(et.fields).filter(f => f.identifier)) {
+      for (const f of et.fields.filter(f => f.identifier)) {
         if (ids[f.code] === undefined) throw new Error(
           `Field '${f.code}' expected but not found in the 'ids' provided.`
         )
@@ -124,11 +121,11 @@ export class DataDomain {
 
     const update = new Update().table(et.table)
 
-    for (const id of Object.values(et.fields).filter(f => f.identifier)) {
+    for (const id of et.fields.filter(f => f.identifier)) {
       update.where.equal(id.column, data[id.code], { acceptNull: false })
     }
 
-    const fieldsToUpdate = Object.values(et.fields)
+    const fieldsToUpdate = et.fields
       .filter(ft => !ft.identifier) // Don't update identifiers
       .filter(f => data[f.code] !== undefined) // Accept null values
 
@@ -138,7 +135,7 @@ export class DataDomain {
 
     const result = await update.execute(this.domainDB)
     if (result.changes !== 1) throw new Error(
-      'Data update expected to change a single value ' +
+      'Update expected to change a single entity ' +
       `but it changed ${result.changes}`
     )
 
@@ -160,7 +157,7 @@ export class DataDomain {
         name: toCapitalizedSpaced(table),
         code: table,
         table,
-        fields: {},
+        fields: [],
       } as any
 
       const [fieldExamples] = await (
@@ -185,12 +182,12 @@ export class DataDomain {
           identifier: isID,
           hidden: isID,
         } as any
-        et.fields[ft.code] = ft
+        et.fields.push(ft)
       }
 
       const formatFirstNFields = (
         numberOfFields: number,
-      ) => Object.values(et.fields!)
+      ) => et.fields
         .filter(x => !x.hidden)
         .slice(0, numberOfFields)
         .map(x => `#{${x.code}}`).join(' ')
@@ -242,7 +239,7 @@ export class DataDomain {
         title: et.titleFormatTitle,
         subtitle: et.titleFormatSubtitle,
       },
-      fields: {},
+      fields: [],
     }))
 
     // Read fields for each entity type
@@ -251,7 +248,7 @@ export class DataDomain {
       select.where.equal('entityTypeId', et.id)
       const fields = await select.query(this.metaDB)
       for (const f of fields) {
-        et.fields[f.code] = {
+        et.fields.push({
           id: f.id,
           name: f.name,
           code: f.code,
@@ -260,7 +257,7 @@ export class DataDomain {
           type: f.type,
           identifier: f.identifier,
           hidden: f.hidden,
-        }
+        })
       }
     }))
 
