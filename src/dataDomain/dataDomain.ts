@@ -301,7 +301,6 @@ export async function createMetaDB(db: Database) {
 }
 
 async function createEntityTypeTable(db: Database): Promise<void> {
-  // TODO WIP Craft and use `CreateTableBuilder`?
   await db.run(trimMargin`
     |CREATE TABLE entityType (
     |  id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -326,7 +325,7 @@ async function createFieldTypeTable(db: Database): Promise<void> {
     |  type TEXT,
     |  identifier INTEGER(1),
     |  hidden INTEGER(1),
-    |  FOREIGN KEY(entityTypeId) REFERENCES entityType(id)
+    |  FOREIGN KEY(entityTypeId) REFERENCES entityType(id),
     |  UNIQUE(entityTypeId,code)
     |)
   `)

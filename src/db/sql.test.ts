@@ -185,5 +185,4 @@ describe('Update SQL', () => {
       update.where.equal('id1', null)
     }).toThrow('Field \'id1\' cannot be compared to \'null\'')
   })
-
 })
