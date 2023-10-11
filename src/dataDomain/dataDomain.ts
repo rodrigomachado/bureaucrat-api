@@ -1,8 +1,8 @@
 import { log } from 'console'
 
-import { DataSource } from './dataSourceSQL'
 import { Database } from '../db/sqlite3.promises'
 import { toCapitalizedSpaced, trimMargin } from '../jsext/strings'
+import { Insert, Select, Update } from '../db/sql'
 
 export type EntityMeta = {
   id: number,
@@ -10,9 +10,7 @@ export type EntityMeta = {
   code: string,
   table: string,
   titleFormat: { title: string, subtitle: string },
-  fields: {
-    [name: string]: FieldMeta,
-  },
+  fields: FieldMeta[],
 }
 
 export type FieldMeta = {
@@ -84,33 +82,68 @@ export class DataDomain {
 
   /**
    * Reads all entries for a particular entity type.
+   * @param opts.ids An object with the identifiers of a **single** entity. 
+   *   It may contain other fields for convenience.
+   * @param opts.limit The maximum number of entities to be returned.
    */
   async read(
     entityTypeCode: string, { ids, limit }: ReadOptions = {},
   ): Promise<any[]> {
-    const ds = DataSource.read(
-      this.domainDB,
-      await this.entityType(entityTypeCode),
-    )
-    if (ids) ds.ids(ids)
-    if (limit) ds.limit(limit)
-    return await ds.all()
-  }
-
-  async update(entityTypeCode: string, data: any) {
-    // TODO Resolve duplication on `DataSource.read(…)` and `…update(…)`.
-    // Ex: idData evaluation
     const et = await this.entityType(entityTypeCode)
 
-    const db = DataSource.update(this.domainDB, et)
-    db.data(data)
-    await db.execute()
+    const select = new Select().from(et.table)
+    if (ids) {
+      for (const f of et.fields.filter(f => f.identifier)) {
+        if (ids[f.code] === undefined) throw new Error(
+          `Field '${f.code}' expected but not found in the 'ids' provided.`
+        )
+        select.where.equal(f.column, ids[f.code])
+      }
+    }
+    if (limit) select.limit(limit)
 
-    const idData = Object.values(et.fields)
-      .filter(f => f.identifier).map(f => data[f.code])
-    const entities = await DataSource.read(
-      this.domainDB, et,
-    ).ids(idData).all()
+    const raw = await select.query(this.domainDB)
+    return raw.map(r => {
+      return Object.values(et.fields).reduce((acc, f) => {
+        acc[f.code] = r[f.column]
+        return acc
+      }, {} as any)
+    })
+  }
+
+  /**
+   * Updates an entity.
+   * The provided data must define the ids to the target entity and one or more
+   * non-id fields to be updated.
+   */
+  async update(entityTypeCode: string, data: any) {
+    const et = await this.entityType(entityTypeCode)
+
+    const update = new Update().table(et.table)
+
+    for (const id of et.fields.filter(f => f.identifier)) {
+      update.where.equal(id.column, data[id.code], { acceptNull: false })
+    }
+
+    const fieldsToUpdate = et.fields
+      .filter(ft => !ft.identifier) // Don't update identifiers
+      .filter(f => data[f.code] !== undefined) // Accept null values
+
+    for (const f of fieldsToUpdate) {
+      update.attrib.set(f.column, data[f.code])
+    }
+
+    const result = await update.execute(this.domainDB)
+    if (result.changes !== 1) throw new Error(
+      'Update expected to change a single entity ' +
+      `but it changed ${result.changes}`
+    )
+
+    const entities = await this.read(entityTypeCode, { ids: data })
+    if (entities.length !== 1) throw new Error(
+      'Expected reading the entity just updated to return a single entity ' +
+      `but ${entities.length} were returned instead.`,
+    )
     return entities[0]
   }
 
@@ -124,11 +157,11 @@ export class DataDomain {
         name: toCapitalizedSpaced(table),
         code: table,
         table,
-        fields: {},
+        fields: [],
       } as any
 
-      const [fieldExamples] = await this.domainDB.all(
-        `SELECT * FROM ${table} LIMIT 1`,
+      const [fieldExamples] = await (
+        new Select().from(table).limit(1).query(this.domainDB)
       )
 
       const fields = await this.domainDB.all(
@@ -149,12 +182,12 @@ export class DataDomain {
           identifier: isID,
           hidden: isID,
         } as any
-        et.fields[ft.code] = ft
+        et.fields.push(ft)
       }
 
       const formatFirstNFields = (
         numberOfFields: number,
-      ) => Object.values(et.fields!)
+      ) => et.fields
         .filter(x => !x.hidden)
         .slice(0, numberOfFields)
         .map(x => `#{${x.code}}`).join(' ')
@@ -164,28 +197,28 @@ export class DataDomain {
       }
 
       // Save to the `entityType` table
-      const { lastID: entityID } = await this.metaDB.run(trimMargin`
-        |INSERT INTO entityType(
-        |  name,code,'table',titleFormatTitle,titleFormatSubtitle
-        |)
-        |VALUES (?,?,?,?,?)
-      `, [
-        et.name, et.code, et.table,
-        et.titleFormat.title, et.titleFormat.subtitle,
-      ])
+      const { lastID: entityID } = await new Insert()
+        .into('entityType')
+        .set('name', et.name)
+        .set('code', et.code)
+        .set('table', et.table)
+        .set('titleFormatTitle', et.titleFormat.title)
+        .set('titleFormatSubtitle', et.titleFormat.subtitle)
+        .execute(this.metaDB)
       et.id = entityID
 
       // Save to the `fieldTypes` table
       for (const f of Object.values(et.fields)) {
-        const { lastID: fieldID } = await this.metaDB.run(trimMargin`
-          |INSERT INTO fieldType(
-          |  entityTypeId,name,code,column,placeholder,type,identifier,hidden
-          |)
-          |VALUES (?,?,?,?,?,?,?,?)
-        `, [
-          et.id, f.name, f.code, f.column,
-          f.placeholder, f.type, f.identifier, f.hidden,
-        ])
+        const { lastID: fieldID } = await new Insert().into('fieldType')
+          .set('entityTypeId', et.id)
+          .set('name', f.name)
+          .set('code', f.code)
+          .set('column', f.column)
+          .set('placeholder', f.placeholder)
+          .set('type', f.type)
+          .set('identifier', f.identifier)
+          .set('hidden', f.hidden)
+          .execute(this.metaDB)
         f.id = fieldID
       }
 
@@ -196,7 +229,7 @@ export class DataDomain {
   private async mappedEntityTypes(): Promise<EntityMeta[]> {
     // Read `entityType` table
     const entityTypes: EntityMeta[] = (
-      await this.metaDB.all('SELECT * FROM entityType')
+      await new Select().from('entityType').query(this.metaDB)
     ).map((et: any) => ({
       id: et.id,
       name: et.name,
@@ -206,16 +239,16 @@ export class DataDomain {
         title: et.titleFormatTitle,
         subtitle: et.titleFormatSubtitle,
       },
-      fields: {},
+      fields: [],
     }))
 
     // Read fields for each entity type
     await Promise.all(entityTypes.map(async et => {
-      const fields = await this.metaDB.all(
-        'SELECT * FROM fieldType WHERE entityTypeId = ?', [et.id],
-      )
+      const select = new Select().from('fieldType')
+      select.where.equal('entityTypeId', et.id)
+      const fields = await select.query(this.metaDB)
       for (const f of fields) {
-        et.fields[f.code] = {
+        et.fields.push({
           id: f.id,
           name: f.name,
           code: f.code,
@@ -224,7 +257,7 @@ export class DataDomain {
           type: f.type,
           identifier: f.identifier,
           hidden: f.hidden,
-        }
+        })
       }
     }))
 
@@ -245,7 +278,7 @@ export class DataDomain {
 }
 
 type ReadOptions = {
-  ids?: any[],
+  ids?: { [fCode: string]: any },
   limit?: number,
 }
 
@@ -289,7 +322,7 @@ async function createFieldTypeTable(db: Database): Promise<void> {
     |  type TEXT,
     |  identifier INTEGER(1),
     |  hidden INTEGER(1),
-    |  FOREIGN KEY(entityTypeId) REFERENCES entityType(id)
+    |  FOREIGN KEY(entityTypeId) REFERENCES entityType(id),
     |  UNIQUE(entityTypeId,code)
     |)
   `)

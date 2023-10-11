@@ -14,33 +14,33 @@ describe('DataDomain.entityTypes', () => {
     expect(ets[0].code).toBe('user')
     expect(ets[0].name).toBe('User')
     expect(ets[0].table).toBe('user')
-    expect(ets[0].fields).toEqual({
-      id: {
+    expect(ets[0].fields).toEqual([
+      {
         name: 'Id', code: 'id', column: 'id',
         placeholder: null,
         type: 'number', identifier: true, hidden: true, id: 1,
       },
-      first_name: {
+      {
         name: 'First Name', code: 'first_name', column: 'first_name',
         placeholder: 'Douglas',
         type: 'string', identifier: false, hidden: false, id: 3,
       },
-      middle_name: {
+      {
         name: 'Middle Name', code: 'middle_name', column: 'middle_name',
         placeholder: 'Noël',
         type: 'string', identifier: false, hidden: false, id: 5,
       },
-      last_name: {
+      {
         name: 'Last Name', code: 'last_name', column: 'last_name',
         placeholder: 'Adams',
         type: 'string', identifier: false, hidden: false, id: 7,
       },
-      birth_date: {
+      {
         name: 'Birth Date', code: 'birth_date', column: 'birth_date',
         placeholder: '1767-07-11',
         type: 'string', identifier: false, hidden: false, id: 8,
       },
-    })
+    ])
     expect(ets[0].titleFormat).toEqual({
       subtitle: '#{first_name} #{middle_name} #{last_name}',
       title: '#{first_name} #{middle_name}',
@@ -49,20 +49,20 @@ describe('DataDomain.entityTypes', () => {
     expect(ets[1].code).toBe('feature')
     expect(ets[1].name).toBe('Feature')
     expect(ets[1].table).toBe('feature')
-    expect(ets[1].fields).toEqual({
-      id: {
+    expect(ets[1].fields).toEqual([
+      {
         name: 'Id', code: 'id', column: 'id', placeholder: null,
         type: 'number', identifier: true, hidden: true, id: 2,
       },
-      name: {
+      {
         name: 'Name', code: 'name', column: 'name', placeholder: 'CreateUser',
         type: 'string', identifier: false, hidden: false, id: 4,
       },
-      path: {
+      {
         name: 'Path', code: 'path', column: 'path', placeholder: 'user',
         type: 'string', identifier: false, hidden: false, id: 6,
       },
-    })
+    ])
     expect(ets[1].titleFormat).toEqual({
       subtitle: '#{name} #{path}',
       title: '#{name} #{path}',
@@ -88,7 +88,7 @@ describe('DataDomain.read', () => {
   test('read ids', async () => {
     const dd = new DataDomain(await mockMetaDB(), await mockDomainDB())
     const et = await dd.entityType('user')
-    const es = await dd.read(et.code, { ids: [1] })
+    const es = await dd.read(et.code, { ids: { id: 1 } })
     expect(es).toEqual([{
       'id': 1,
       'first_name': 'Douglas',
@@ -98,16 +98,17 @@ describe('DataDomain.read', () => {
     }])
   })
 
-  test('read ids: ids length mismatch', async () => {
+  test('read ids: id not found', async () => {
     try {
       const dd = new DataDomain(await mockMetaDB(), await mockDomainDB())
       const et = await dd.entityType('user')
-      await dd.read(et.code, { ids: [1, 2] })
+      await dd.read(et.code, { ids: { id1: 1, id2: 2 } })
       fail('Expected an error to be thrown')
     } catch (e) {
       expect(e).toBeInstanceOf(Error)
-      expect((e as Error).message)
-        .toBe('Invalid IDs provided (length: 2). Expected 1 id: \'id\'')
+      expect((e as Error).message).toBe(
+        'Field \'id\' expected but not found in the \'ids\' provided.',
+      )
     }
   })
 
