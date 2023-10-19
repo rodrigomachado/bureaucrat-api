@@ -58,7 +58,6 @@ export class DataDomain {
    * entity types.
    */
   async entityTypes(): Promise<EntityMeta[]> {
-    // TODO Invalidate entity types cache eventually
     if (this._entityTypes) return this._entityTypes
     return this._entityTypes = (async () => {
       const entityTypes = await this.mappedEntityTypes()
@@ -167,7 +166,6 @@ export class DataDomain {
       const fields = await this.domainDB.all(
         'SELECT * FROM PRAGMA_TABLE_INFO(?)', [table],
       )
-      // TODO Validate `fields` shape?
       for (const f of fields) {
         const isID = f.pk === 1
         const column = f.name

@@ -120,7 +120,6 @@ export function schema(): GraphQLSchema {
 
   const gqlMutation = new GraphQLObjectType<void, Context>({
     name: 'Mutation',
-    // TODO GQL mutation branch factory utility
     fields: {
       entityUpdate: {
         type: GraphQLJSONObject,
@@ -128,12 +127,6 @@ export function schema(): GraphQLSchema {
           entityTypeCode: { type: GraphQLString },
           data: { type: GraphQLJSONObject },
         },
-        // TODO Report and translate internal exceptions
-        // Non catastrophic errors (exceptions) should be properly communicated
-        // and handled.
-        // Handle:
-        // - Entity not found
-        // - Entity type not found
         resolve(source, { entityTypeCode, data }, { dataDomain }) {
           return dataDomain.update(entityTypeCode, data)
         },
