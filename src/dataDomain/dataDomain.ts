@@ -22,6 +22,7 @@ export type FieldMeta = {
   type: FieldType,
   identifier: boolean,
   hidden: boolean,
+  mandatory: boolean,
 }
 
 export enum FieldType {
@@ -77,6 +78,27 @@ export class DataDomain {
     const [entityType] = entityTypes.filter(et => et.code === code)
     if (!entityType) throw new Error(`No entity type found for code '${code}'`)
     return entityType
+  }
+
+  async create(entityTypeCode: string, data: any): Promise<void> {
+    const et = await this.entityType(entityTypeCode)
+
+    const allowed = et.fields.map(f => f.code)
+    const unknown = Object.keys(data).filter(f => !allowed.includes(f))
+    if (unknown.length) throw new Error(
+      `Unknown fields provided: ${unknown.map(f => `\`${f}\``).join(', ')}.`
+    )
+
+    const insert = new Insert().into(et.table)
+    for (const field of et.fields) {
+      const value = data[field.code]
+      if (field.mandatory && (value === undefined || value === null)) {
+        throw new Error(`Mandatory field \`${field.code}\` not provided.`)
+      }
+      // TODO WIP Consider auto generated values
+      insert.set(field.column, value)
+    }
+    await insert.execute(this.domainDB)
   }
 
   /**
@@ -179,6 +201,7 @@ export class DataDomain {
           type: sqliteTypeToFieldType(f.type),
           identifier: isID,
           hidden: isID,
+          mandatory: f.notnull === 1,
         } as any
         et.fields.push(ft)
       }
@@ -255,6 +278,7 @@ export class DataDomain {
           type: f.type,
           identifier: f.identifier,
           hidden: f.hidden,
+          mandatory: f.mandatory,
         })
       }
     }))

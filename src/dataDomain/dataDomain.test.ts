@@ -16,29 +16,29 @@ describe('DataDomain.entityTypes', () => {
     expect(ets[0].table).toBe('user')
     expect(ets[0].fields).toEqual([
       {
-        name: 'Id', code: 'id', column: 'id',
+        id: 1, name: 'Id', code: 'id', column: 'id',
         placeholder: null,
-        type: 'number', identifier: true, hidden: true, id: 1,
+        type: 'number', identifier: true, hidden: true, mandatory: false,
       },
       {
-        name: 'First Name', code: 'first_name', column: 'first_name',
+        id: 3, name: 'First Name', code: 'first_name', column: 'first_name',
         placeholder: 'Douglas',
-        type: 'string', identifier: false, hidden: false, id: 3,
+        type: 'string', identifier: false, hidden: false, mandatory: true,
       },
       {
-        name: 'Middle Name', code: 'middle_name', column: 'middle_name',
+        id: 5, name: 'Middle Name', code: 'middle_name', column: 'middle_name',
         placeholder: 'Noël',
-        type: 'string', identifier: false, hidden: false, id: 5,
+        type: 'string', identifier: false, hidden: false, mandatory: false,
       },
       {
-        name: 'Last Name', code: 'last_name', column: 'last_name',
+        id: 7, name: 'Last Name', code: 'last_name', column: 'last_name',
         placeholder: 'Adams',
-        type: 'string', identifier: false, hidden: false, id: 7,
+        type: 'string', identifier: false, hidden: false, mandatory: true,
       },
       {
-        name: 'Birth Date', code: 'birth_date', column: 'birth_date',
+        id: 8, name: 'Birth Date', code: 'birth_date', column: 'birth_date',
         placeholder: '1767-07-11',
-        type: 'string', identifier: false, hidden: false, id: 8,
+        type: 'string', identifier: false, hidden: false, mandatory: false,
       },
     ])
     expect(ets[0].titleFormat).toEqual({
@@ -51,22 +51,109 @@ describe('DataDomain.entityTypes', () => {
     expect(ets[1].table).toBe('feature')
     expect(ets[1].fields).toEqual([
       {
-        name: 'Id', code: 'id', column: 'id', placeholder: null,
-        type: 'number', identifier: true, hidden: true, id: 2,
+        id: 2, name: 'Id', code: 'id', column: 'id', placeholder: null,
+        type: 'number', identifier: true, hidden: true, mandatory: false,
       },
       {
-        name: 'Name', code: 'name', column: 'name', placeholder: 'CreateUser',
-        type: 'string', identifier: false, hidden: false, id: 4,
+        id: 4, name: 'Name', code: 'name', column: 'name',
+        placeholder: 'CreateUser',
+        type: 'string', identifier: false, hidden: false, mandatory: false,
       },
       {
-        name: 'Path', code: 'path', column: 'path', placeholder: 'user',
-        type: 'string', identifier: false, hidden: false, id: 6,
+        id: 6, name: 'Path', code: 'path', column: 'path', placeholder: 'user',
+        type: 'string', identifier: false, hidden: false, mandatory: false,
       },
     ])
     expect(ets[1].titleFormat).toEqual({
       subtitle: '#{name} #{path}',
       title: '#{name} #{path}',
     })
+  })
+})
+
+describe('DataDomain.create', () => {
+  test('create a simple entity', async () => {
+    const [metaDb, domainDB] = [
+      await mockMetaDB(),
+      await mockDomainDB(twoFieldTable),
+    ]
+
+    const dd = new DataDomain(metaDb, domainDB)
+    await dd.create('two_fields', {
+      first_field: 'first value',
+      second_field: 'second value',
+    })
+
+    expect(await tableRows(domainDB, 'two_fields')).toEqual([
+      { first_field: 'first value', second_field: 'second value' },
+    ])
+  })
+
+  test('breaks on extra field', async () => {
+    const [metaDb, domainDB] = [
+      await mockMetaDB(),
+      await mockDomainDB(twoFieldTable),
+    ]
+
+    const dd = new DataDomain(metaDb, domainDB)
+    await expect(dd.create('two_fields', {
+      first_field: 'first value',
+      second_field: 'second value',
+      third_field: 'third value',
+      forth_field: 'forth value',
+    })).rejects.toThrow(
+      'Unknown fields provided: `third_field`, `forth_field`'
+    )
+  })
+
+  test('breaks on missing mandatory field', async () => {
+    const [metaDb, domainDB] = [
+      await mockMetaDB(),
+      await mockDomainDB(twoMandatoryFieldTable),
+    ]
+
+    const dd = new DataDomain(metaDb, domainDB)
+    await expect(dd.create('two_fields', {
+      first_field: 'first value',
+    })).rejects.toThrow(
+      'Mandatory field `second_field` not provided.'
+    )
+  })
+
+  test('create entity with id', async () => {
+    const [metaDB, domainDB] = [
+      await mockMetaDB(),
+      await mockDomainDB(simpleTableWithId),
+    ]
+
+    const dd = new DataDomain(metaDB, domainDB)
+    await dd.create('two_fields_with_id', {
+      id: 1,
+      first_field: 'first value',
+      second_field: 'second value',
+    })
+
+    expect(await tableRows(domainDB, 'two_fields_with_id')).toEqual([
+      { id: 1, first_field: 'first value', second_field: 'second value' },
+    ])
+  })
+
+  test('create entity with auto generated id', async () => {
+    const [metaDB, domainDB] = [
+      await mockMetaDB(),
+      await mockDomainDB(simpleTableWithId),
+    ]
+
+    const dd = new DataDomain(metaDB, domainDB)
+    await dd.create('two_fields_with_id', {
+      first_field: 'first value',
+      second_field: 'second value',
+    })
+    // TODO WIP New entity must be returned with auto generated fields
+
+    expect(await tableRows(domainDB, 'two_fields_with_id')).toEqual([
+      { id: 1, first_field: 'first value', second_field: 'second value' },
+    ])
   })
 })
 
@@ -184,9 +271,12 @@ async function mockMetaDB(): Promise<Database> {
   return db
 }
 
-async function mockDomainDB(): Promise<Database> {
+async function mockDomainDB(
+  ...extensions: ((db: Database) => Promise<void>)[]
+): Promise<Database> {
   const db = await Database.connect(':memory:')
   await populateDB(db)
+  extensions.forEach(async (ext) => ext(db))
   return db
 }
 
@@ -251,4 +341,36 @@ const USER_CODES_TO_PORTUGUESE = {
     { column: 'last_name', code: 'último_nome' },
     { column: 'birth_date', code: 'data_de_nascimento' },
   ],
+}
+
+async function twoFieldTable(db: Database) {
+  await db.run(trimMargin`
+    |CREATE TABLE two_fields (
+    |  first_field TEXT,
+    |  second_field TEXT
+    |)
+  `)
+}
+
+async function twoMandatoryFieldTable(db: Database) {
+  await db.run(trimMargin`
+    |CREATE TABLE two_fields (
+    |  first_field TEXT NOT NULL,
+    |  second_field TEXT NOT NULL
+    |)
+  `)
+}
+
+async function simpleTableWithId(db: Database) {
+  await db.run(trimMargin`
+    |CREATE TABLE two_fields_with_id (
+    |  id INTEGER PRIMARY KEY AUTOINCREMENT,
+    |  first_field TEXT,
+    |  second_field TEXT
+    |)
+  `)
+}
+
+async function tableRows(db: Database, table: string): Promise<any[]> {
+  return db.all(`SELECT * FROM ${table}`)
 }
