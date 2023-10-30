@@ -23,6 +23,7 @@ export type FieldMeta = {
   identifier: boolean,
   hidden: boolean,
   mandatory: boolean,
+  generated: boolean,
 }
 
 export enum FieldType {
@@ -80,7 +81,7 @@ export class DataDomain {
     return entityType
   }
 
-  async create(entityTypeCode: string, data: any): Promise<void> {
+  async create(entityTypeCode: string, data: any): Promise<any> {
     const et = await this.entityType(entityTypeCode)
 
     const allowed = et.fields.map(f => f.code)
@@ -95,10 +96,18 @@ export class DataDomain {
       if (field.mandatory && (value === undefined || value === null)) {
         throw new Error(`Mandatory field \`${field.code}\` not provided.`)
       }
-      // TODO WIP Consider auto generated values
       insert.set(field.column, value)
     }
-    await insert.execute(this.domainDB)
+    const { lastID } = await insert.execute(this.domainDB)
+
+    // Fill in generated field
+    const generatedField = et.fields.find(f => f.generated)
+    if (lastID && generatedField) data = {
+      ...data,
+      [generatedField.code]: lastID,
+    }
+
+    return data
   }
 
   /**
@@ -202,10 +211,18 @@ export class DataDomain {
           identifier: isID,
           hidden: isID,
           mandatory: f.notnull === 1,
+          generated: false,
         } as any
         et.fields.push(ft)
       }
 
+      // generated (AUTOINCREMENT)
+      const ids = et.fields.filter(f => f.identifier)
+      if (
+        ids.length === 1 && ids[0].type === FieldType.NUMBER
+      ) ids[0].generated = true
+
+      // titleFormat
       const formatFirstNFields = (
         numberOfFields: number,
       ) => et.fields
@@ -239,6 +256,8 @@ export class DataDomain {
           .set('type', f.type)
           .set('identifier', f.identifier)
           .set('hidden', f.hidden)
+          .set('mandatory', f.mandatory)
+          .set('generated', f.generated)
           .execute(this.metaDB)
         f.id = fieldID
       }
@@ -279,6 +298,7 @@ export class DataDomain {
           identifier: f.identifier,
           hidden: f.hidden,
           mandatory: f.mandatory,
+          generated: false,
         })
       }
     }))
@@ -344,6 +364,8 @@ async function createFieldTypeTable(db: Database): Promise<void> {
     |  type TEXT,
     |  identifier INTEGER(1),
     |  hidden INTEGER(1),
+    |  mandatory INTEGER(1),
+    |  generated INTEGER(1),
     |  FOREIGN KEY(entityTypeId) REFERENCES entityType(id),
     |  UNIQUE(entityTypeId,code)
     |)

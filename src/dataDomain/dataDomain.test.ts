@@ -17,28 +17,28 @@ describe('DataDomain.entityTypes', () => {
     expect(ets[0].fields).toEqual([
       {
         id: 1, name: 'Id', code: 'id', column: 'id',
-        placeholder: null,
-        type: 'number', identifier: true, hidden: true, mandatory: false,
+        placeholder: null, type: 'number',
+        identifier: true, hidden: true, mandatory: false, generated: true,
       },
       {
         id: 3, name: 'First Name', code: 'first_name', column: 'first_name',
-        placeholder: 'Douglas',
-        type: 'string', identifier: false, hidden: false, mandatory: true,
+        placeholder: 'Douglas', type: 'string',
+        identifier: false, hidden: false, mandatory: true, generated: false,
       },
       {
         id: 5, name: 'Middle Name', code: 'middle_name', column: 'middle_name',
-        placeholder: 'Noël',
-        type: 'string', identifier: false, hidden: false, mandatory: false,
+        placeholder: 'Noël', type: 'string',
+        identifier: false, hidden: false, mandatory: false, generated: false,
       },
       {
         id: 7, name: 'Last Name', code: 'last_name', column: 'last_name',
-        placeholder: 'Adams',
-        type: 'string', identifier: false, hidden: false, mandatory: true,
+        placeholder: 'Adams', type: 'string',
+        identifier: false, hidden: false, mandatory: true, generated: false,
       },
       {
         id: 8, name: 'Birth Date', code: 'birth_date', column: 'birth_date',
-        placeholder: '1767-07-11',
-        type: 'string', identifier: false, hidden: false, mandatory: false,
+        placeholder: '1767-07-11', type: 'string',
+        identifier: false, hidden: false, mandatory: false, generated: false,
       },
     ])
     expect(ets[0].titleFormat).toEqual({
@@ -53,15 +53,18 @@ describe('DataDomain.entityTypes', () => {
       {
         id: 2, name: 'Id', code: 'id', column: 'id', placeholder: null,
         type: 'number', identifier: true, hidden: true, mandatory: false,
+        generated: true,
       },
       {
         id: 4, name: 'Name', code: 'name', column: 'name',
         placeholder: 'CreateUser',
         type: 'string', identifier: false, hidden: false, mandatory: false,
+        generated: false,
       },
       {
         id: 6, name: 'Path', code: 'path', column: 'path', placeholder: 'user',
         type: 'string', identifier: false, hidden: false, mandatory: false,
+        generated: false,
       },
     ])
     expect(ets[1].titleFormat).toEqual({
@@ -145,12 +148,16 @@ describe('DataDomain.create', () => {
     ]
 
     const dd = new DataDomain(metaDB, domainDB)
-    await dd.create('two_fields_with_id', {
+    const e = await dd.create('two_fields_with_id', {
       first_field: 'first value',
       second_field: 'second value',
     })
-    // TODO WIP New entity must be returned with auto generated fields
 
+    expect(e).toEqual({
+      id: 1,
+      first_field: 'first value',
+      second_field: 'second value',
+    })
     expect(await tableRows(domainDB, 'two_fields_with_id')).toEqual([
       { id: 1, first_field: 'first value', second_field: 'second value' },
     ])
@@ -276,7 +283,9 @@ async function mockDomainDB(
 ): Promise<Database> {
   const db = await Database.connect(':memory:')
   await populateDB(db)
-  extensions.forEach(async (ext) => ext(db))
+  for (const ext of extensions) {
+    await ext(db)
+  }
   return db
 }
 
