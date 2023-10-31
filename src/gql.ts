@@ -111,7 +111,7 @@ export function schema(): GraphQLSchema {
         args: {
           entityType: { type: GraphQLString },
         },
-        resolve(source, { entityType }, { dataDomain }) {
+        async resolve(source, { entityType }, { dataDomain }) {
           return dataDomain.read(entityType)
         },
       },
@@ -121,13 +121,23 @@ export function schema(): GraphQLSchema {
   const gqlMutation = new GraphQLObjectType<void, Context>({
     name: 'Mutation',
     fields: {
+      entityCreate: {
+        type: GraphQLJSONObject,
+        args: {
+          entityTypeCode: { type: GraphQLString },
+          data: { type: GraphQLJSONObject },
+        },
+        async resolve(source, { entityTypeCode, data }, { dataDomain }) {
+          return dataDomain.create(entityTypeCode, data)
+        },
+      },
       entityUpdate: {
         type: GraphQLJSONObject,
         args: {
           entityTypeCode: { type: GraphQLString },
           data: { type: GraphQLJSONObject },
         },
-        resolve(source, { entityTypeCode, data }, { dataDomain }) {
+        async resolve(source, { entityTypeCode, data }, { dataDomain }) {
           return dataDomain.update(entityTypeCode, data)
         },
       },
