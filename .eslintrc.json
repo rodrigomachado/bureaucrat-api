@@ -38,7 +38,6 @@
       "error",
       "always-multiline"
     ],
-    "@typescript-eslint/no-explicit-any": "warn",
     "@typescript-eslint/no-explicit-any": "off"
   }
 }
