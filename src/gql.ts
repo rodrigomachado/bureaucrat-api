@@ -50,6 +50,19 @@ export function schema(): GraphQLSchema {
           'Whether the field and its value should be show to the user',
         type: GraphQLBoolean,
       },
+      mandatory: {
+        description: 'Whether the field is mandatory or not. Mandatory ' +
+          'fields cannot be empty when creating a new entity or updating an ' +
+          'existing one.\n' +
+          'Note that generated fields will be generated while creating a ' +
+          'new entity.',
+        type: GraphQLBoolean,
+      },
+      generated: {
+        description: 'Whether the field is auto generated during entity ' +
+          'creation or not.',
+        type: GraphQLBoolean,
+      },
     },
   })
   const gqlEntityTitleFormat = new GraphQLObjectType({
@@ -111,7 +124,7 @@ export function schema(): GraphQLSchema {
         args: {
           entityType: { type: GraphQLString },
         },
-        resolve(source, { entityType }, { dataDomain }) {
+        async resolve(source, { entityType }, { dataDomain }) {
           return dataDomain.read(entityType)
         },
       },
@@ -121,13 +134,23 @@ export function schema(): GraphQLSchema {
   const gqlMutation = new GraphQLObjectType<void, Context>({
     name: 'Mutation',
     fields: {
+      entityCreate: {
+        type: GraphQLJSONObject,
+        args: {
+          entityTypeCode: { type: GraphQLString },
+          data: { type: GraphQLJSONObject },
+        },
+        async resolve(source, { entityTypeCode, data }, { dataDomain }) {
+          return dataDomain.create(entityTypeCode, data)
+        },
+      },
       entityUpdate: {
         type: GraphQLJSONObject,
         args: {
           entityTypeCode: { type: GraphQLString },
           data: { type: GraphQLJSONObject },
         },
-        resolve(source, { entityTypeCode, data }, { dataDomain }) {
+        async resolve(source, { entityTypeCode, data }, { dataDomain }) {
           return dataDomain.update(entityTypeCode, data)
         },
       },

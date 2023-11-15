@@ -36,9 +36,9 @@ async function createUsers(db: sql3.Database): Promise<void> {
   await db.run(`
     CREATE TABLE user (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      first_name TEXT,
+      first_name TEXT NOT NULL,
       middle_name TEXT,
-      last_name TEXT,
+      last_name TEXT NOT NULL,
       birth_date TEXT
     )
   `)

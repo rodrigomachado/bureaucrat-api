@@ -22,6 +22,8 @@ export type FieldMeta = {
   type: FieldType,
   identifier: boolean,
   hidden: boolean,
+  mandatory: boolean,
+  generated: boolean,
 }
 
 export enum FieldType {
@@ -77,6 +79,35 @@ export class DataDomain {
     const [entityType] = entityTypes.filter(et => et.code === code)
     if (!entityType) throw new Error(`No entity type found for code '${code}'`)
     return entityType
+  }
+
+  async create(entityTypeCode: string, data: any): Promise<any> {
+    const et = await this.entityType(entityTypeCode)
+
+    const allowed = et.fields.map(f => f.code)
+    const unknown = Object.keys(data).filter(f => !allowed.includes(f))
+    if (unknown.length) throw new Error(
+      `Unknown fields provided: ${unknown.map(f => `\`${f}\``).join(', ')}.`
+    )
+
+    const insert = new Insert().into(et.table)
+    for (const field of et.fields) {
+      const value = data[field.code]
+      if (field.mandatory && (value === undefined || value === null)) {
+        throw new Error(`Mandatory field \`${field.code}\` not provided.`)
+      }
+      insert.set(field.column, value)
+    }
+    const { lastID } = await insert.execute(this.domainDB)
+
+    // Fill in generated field
+    const generatedField = et.fields.find(f => f.generated)
+    if (lastID && generatedField) data = {
+      ...data,
+      [generatedField.code]: lastID,
+    }
+
+    return data
   }
 
   /**
@@ -179,10 +210,19 @@ export class DataDomain {
           type: sqliteTypeToFieldType(f.type),
           identifier: isID,
           hidden: isID,
+          mandatory: f.notnull === 1,
+          generated: false,
         } as any
         et.fields.push(ft)
       }
 
+      // generated (AUTOINCREMENT)
+      const ids = et.fields.filter(f => f.identifier)
+      if (
+        ids.length === 1 && ids[0].type === FieldType.NUMBER
+      ) ids[0].generated = true
+
+      // titleFormat
       const formatFirstNFields = (
         numberOfFields: number,
       ) => et.fields
@@ -216,6 +256,8 @@ export class DataDomain {
           .set('type', f.type)
           .set('identifier', f.identifier)
           .set('hidden', f.hidden)
+          .set('mandatory', f.mandatory)
+          .set('generated', f.generated)
           .execute(this.metaDB)
         f.id = fieldID
       }
@@ -255,6 +297,8 @@ export class DataDomain {
           type: f.type,
           identifier: f.identifier,
           hidden: f.hidden,
+          mandatory: f.mandatory,
+          generated: false,
         })
       }
     }))
@@ -320,6 +364,8 @@ async function createFieldTypeTable(db: Database): Promise<void> {
     |  type TEXT,
     |  identifier INTEGER(1),
     |  hidden INTEGER(1),
+    |  mandatory INTEGER(1),
+    |  generated INTEGER(1),
     |  FOREIGN KEY(entityTypeId) REFERENCES entityType(id),
     |  UNIQUE(entityTypeId,code)
     |)
