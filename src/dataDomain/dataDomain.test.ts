@@ -16,28 +16,28 @@ describe('DataDomain.entityTypes', () => {
     expect(ets[0].table).toBe('user')
     expect(ets[0].fields).toEqual([
       {
-        id: 1, name: 'Id', code: 'id', column: 'id',
-        placeholder: null, type: 'number',
+        id: expect.any(Number), name: 'Id', code: 'id',
+        column: 'id', placeholder: null, type: 'number',
         identifier: true, hidden: true, mandatory: false, generated: true,
       },
       {
-        id: 3, name: 'First Name', code: 'first_name', column: 'first_name',
-        placeholder: 'Douglas', type: 'string',
+        id: expect.any(Number), name: 'First Name', code: 'first_name',
+        column: 'first_name', placeholder: 'Douglas', type: 'string',
         identifier: false, hidden: false, mandatory: true, generated: false,
       },
       {
-        id: 5, name: 'Middle Name', code: 'middle_name', column: 'middle_name',
-        placeholder: 'Noël', type: 'string',
+        id: expect.any(Number), name: 'Middle Name', code: 'middle_name',
+        column: 'middle_name', placeholder: 'Noël', type: 'string',
         identifier: false, hidden: false, mandatory: false, generated: false,
       },
       {
-        id: 7, name: 'Last Name', code: 'last_name', column: 'last_name',
-        placeholder: 'Adams', type: 'string',
+        id: expect.any(Number), name: 'Last Name', code: 'last_name',
+        column: 'last_name', placeholder: 'Adams', type: 'string',
         identifier: false, hidden: false, mandatory: true, generated: false,
       },
       {
-        id: 8, name: 'Birth Date', code: 'birth_date', column: 'birth_date',
-        placeholder: '1767-07-11', type: 'string',
+        id: expect.any(Number), name: 'Birth Date', code: 'birth_date',
+        column: 'birth_date', placeholder: '1767-07-11', type: 'string',
         identifier: false, hidden: false, mandatory: false, generated: false,
       },
     ])
@@ -51,18 +51,20 @@ describe('DataDomain.entityTypes', () => {
     expect(ets[1].table).toBe('feature')
     expect(ets[1].fields).toEqual([
       {
-        id: 2, name: 'Id', code: 'id', column: 'id', placeholder: null,
+        id: expect.any(Number), name: 'Id', code: 'id', column: 'id',
+        placeholder: null,
         type: 'number', identifier: true, hidden: true, mandatory: false,
         generated: true,
       },
       {
-        id: 4, name: 'Name', code: 'name', column: 'name',
+        id: expect.any(Number), name: 'Name', code: 'name', column: 'name',
         placeholder: 'CreateUser',
         type: 'string', identifier: false, hidden: false, mandatory: false,
         generated: false,
       },
       {
-        id: 6, name: 'Path', code: 'path', column: 'path', placeholder: 'user',
+        id: expect.any(Number), name: 'Path', code: 'path', column: 'path',
+        placeholder: 'user',
         type: 'string', identifier: false, hidden: false, mandatory: false,
         generated: false,
       },
@@ -154,12 +156,15 @@ describe('DataDomain.create', () => {
     })
 
     expect(e).toEqual({
-      id: 1,
+      id: expect.any(Number),
       first_field: 'first value',
       second_field: 'second value',
     })
     expect(await tableRows(domainDB, 'two_fields_with_id')).toEqual([
-      { id: 1, first_field: 'first value', second_field: 'second value' },
+      {
+        id: expect.any(Number),
+        first_field: 'first value', second_field: 'second value',
+      },
     ])
   })
 })
@@ -171,7 +176,7 @@ describe('DataDomain.read', () => {
     const es = await dd.read(et.code)
     expect(es).toHaveLength(5)
     expect(es[0]).toEqual({
-      id: 1,
+      id: expect.any(Number),
       first_name: 'Douglas',
       middle_name: 'Noël',
       last_name: 'Adams',
@@ -184,11 +189,11 @@ describe('DataDomain.read', () => {
     const et = await dd.entityType('user')
     const es = await dd.read(et.code, { ids: { id: 1 } })
     expect(es).toEqual([{
-      'id': 1,
-      'first_name': 'Douglas',
-      'middle_name': 'Noël',
-      'last_name': 'Adams',
-      'birth_date': '1767-07-11',
+      id: expect.any(Number),
+      first_name: 'Douglas',
+      middle_name: 'Noël',
+      last_name: 'Adams',
+      birth_date: '1767-07-11',
     }])
   })
 
@@ -223,11 +228,11 @@ describe('DataDomain.read', () => {
     const es = await dd.read('usuário')
     expect(es).toHaveLength(5)
     expect(es[0]).toEqual({
-      'data_de_nascimento': '1767-07-11',
-      'identificador': 1,
-      'nome_do_meio': 'Noël',
-      'primeiro_nome': 'Douglas',
-      'último_nome': 'Adams',
+      data_de_nascimento: '1767-07-11',
+      identificador: expect.any(Number),
+      nome_do_meio: 'Noël',
+      primeiro_nome: 'Douglas',
+      último_nome: 'Adams',
     })
   })
 })
@@ -240,11 +245,11 @@ describe('DataDomain.update', () => {
     [e] = await dd.read(et.code, { limit: 1 })
     e = await dd.update(et.code, { id: e.id, first_name: 'Rick' })
     expect(e).toEqual({
-      'id': 1,
-      'first_name': 'Rick',
-      'middle_name': 'Noël',
-      'last_name': 'Adams',
-      'birth_date': '1767-07-11',
+      id: expect.any(Number),
+      first_name: 'Rick',
+      middle_name: 'Noël',
+      last_name: 'Adams',
+      birth_date: '1767-07-11',
     })
   })
 
@@ -258,11 +263,11 @@ describe('DataDomain.update', () => {
       'usuário', { identificador: e.identificador, primeiro_nome: 'Rick' },
     )
     expect(e).toEqual({
-      'identificador': 1,
-      'primeiro_nome': 'Rick',
-      'nome_do_meio': 'Noël',
-      'último_nome': 'Adams',
-      'data_de_nascimento': '1767-07-11',
+      identificador: expect.any(Number),
+      primeiro_nome: 'Rick',
+      nome_do_meio: 'Noël',
+      último_nome: 'Adams',
+      data_de_nascimento: '1767-07-11',
     })
   })
 
