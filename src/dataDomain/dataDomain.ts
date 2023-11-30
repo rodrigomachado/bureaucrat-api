@@ -2,7 +2,7 @@ import { log } from 'console'
 
 import { Database } from '../db/sqlite3.promises'
 import { toCapitalizedSpaced, trimMargin } from '../jsext/strings'
-import { Insert, Select, Update } from '../db/sql'
+import { Delete, Insert, Select, Update } from '../db/sql'
 
 export type EntityMeta = {
   id: number,
@@ -166,7 +166,7 @@ export class DataDomain {
     const result = await update.execute(this.domainDB)
     if (result.changes !== 1) throw new Error(
       'Update expected to change a single entity ' +
-      `but it changed ${result.changes}`
+      `but it changed ${result.changes}.`
     )
 
     const entities = await this.read(entityTypeCode, { ids: data })
@@ -175,6 +175,28 @@ export class DataDomain {
       `but ${entities.length} were returned instead.`,
     )
     return entities[0]
+  }
+
+  /**
+   * Deletes an entity.
+   * The provided `ids` must uniquely identify a single entity and cover all
+   * identifier fields defined in the entity type. Any non-id field provided
+   * will be ignored.
+   */
+  async delete(entityTypeCode: string, ids: any) {
+    const et = await this.entityType(entityTypeCode)
+
+    const del = new Delete().table(et.table)
+
+    for (const id of et.fields.filter(f => f.identifier)) {
+      del.where.equal(id.column, ids[id.code], { acceptNull: false })
+    }
+
+    const result = await del.execute(this.domainDB)
+    if (result.changes !== 1) throw new Error(
+      'Delete expected to change a single entity ' +
+      `ubt it deleted ${result.changes}.`
+    )
   }
 
   /**

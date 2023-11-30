@@ -1,5 +1,5 @@
 import { trimMargin } from '../jsext/strings'
-import { Insert, Select, Update } from './sql'
+import { Delete, Insert, Select, Update } from './sql'
 
 describe('Select SQL', () => {
   test('SELECT all from table', () => {
@@ -48,7 +48,7 @@ describe('Select SQL', () => {
     const select = new Select().from('users')
     expect(() => {
       select.where.equal('field', null)
-    }).toThrow('Field \'field\' cannot be compared to \'null\'')
+    }).toThrow('Field \'field\' cannot be \'null\'')
   })
 
   test('SELECT with LIMIT', () => {
@@ -183,6 +183,39 @@ describe('Update SQL', () => {
     update.attrib.set('f1', 1)
     expect(() => {
       update.where.equal('id1', null)
-    }).toThrow('Field \'id1\' cannot be compared to \'null\'')
+    }).toThrow('Field \'id1\' cannot be \'null\'')
+  })
+})
+
+describe('Delete SQL', () => {
+  test('Simple DELETE', () => {
+    const del = new Delete().table('table')
+    del.where.equal('f1', 1)
+    expect(del.render()).toEqual({
+      sql: trimMargin`
+        |DELETE FROM \`table\`
+        |WHERE \`f1\` = ?
+      `,
+      params: [1],
+    })
+  })
+
+  test('DELETE missing WHERE', () => {
+    const del = new Delete().table('table')
+    expect(() => del.render()).toThrow(
+      'Where clause must have at least one restriction.'
+    )
+  })
+
+  test('DELETE multiple WHERE', () => {
+    const del = new Delete().table('t1')
+    del.where.equal('f1', 1).equal('f2', 2)
+    expect(del.render()).toEqual({
+      sql: trimMargin`
+        |DELETE FROM \`t1\`
+        |WHERE \`f1\` = ? AND \`f2\` = ?
+      `,
+      params: [1, 2],
+    })
   })
 })
