@@ -174,7 +174,7 @@ export class Update {
 
   /**
    * Renders both the sql statement and the params to be used when executing
-   * the query.
+   * the operation.
    */
   render(): PartialSQL {
     if (!this._update) throw new Error('`table(…)` was never called.')
@@ -195,12 +195,59 @@ export class Update {
   }
 }
 
-const EmptySQL = { sql: '', params: [] }
-const EmptyRenderer = {
-  render() {
-    return EmptySQL
-  },
+/**
+ * Builder for DELETE statements.
+ * Ex:
+ * ```js
+ *    const delete = new Delete().table('table')
+ *    delete.where.equal('id',1)
+ *    const { sql, params } = delete.execute()
+ * ```
+ */
+export class Delete {
+  private _delete: StaticSQL | undefined
+  private _where = new WhereBuilder()
+
+  /**
+   * The table where the row to be deleted resides.
+   * This field is mandatory before rendering.
+   */
+  table(table: string): this {
+    if (this._delete) throw new Error(
+      'Table cannot be defined more than once',
+    )
+    this._delete = new StaticSQL(`DELETE FROM \`${table}\``)
+    return this
+  }
+
+  /**
+   * WHERE builder.
+   * At least one restriction must be provided.
+   */
+  get where() {
+    return this._where
+  }
+
+  /**
+   * Renders both the sql statement and the params to be used when executing
+   * the operation.
+   */
+  render(): PartialSQL {
+    if (!this._delete) throw new Error('`table(…)` was never called.')
+    return mergeRenderers([this._delete, this._where])
+  }
+
+  /**
+   * Executs the delete into the provided database.
+   */
+  async execute(db: Database) {
+    const { sql, params } = this.render()
+    return db.run(sql, params)
+  }
 }
+
+const EmptySQL = { sql: '', params: [] }
+const EmptyRenderer = { render: () => EmptySQL }
 
 class StaticSQL implements PartialRenderer {
   private partialSQL: PartialSQL
@@ -257,6 +304,7 @@ class WhereBuilder implements PartialRenderer {
   /**
    * Constructor.
    * @param opts.required Whether at list one restriction must be set.
+   * Default: true
    */
   constructor({ required } = { required: true }) {
     this._required = required
@@ -271,10 +319,10 @@ class WhereBuilder implements PartialRenderer {
    */
   equal(field: string, value: any, { acceptNull } = EqualOptionsDefault): this {
     if (!acceptNull && value === null) throw new Error(
-      `Field '${field}' cannot be compared to 'null'`
+      `Field '${field}' cannot be 'null'`
     )
     if (value === undefined) {
-      `Field '${field}' cannot be compared to 'undefined'`
+      `Field '${field}' cannot be 'undefined'`
     }
     this.fields.push(field)
     this.values.push(value)

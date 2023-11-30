@@ -135,6 +135,7 @@ export function schema(): GraphQLSchema {
     name: 'Mutation',
     fields: {
       entityCreate: {
+        description: 'Creates a new entity of a given type.',
         type: GraphQLJSONObject,
         args: {
           entityTypeCode: { type: GraphQLString },
@@ -145,6 +146,12 @@ export function schema(): GraphQLSchema {
         },
       },
       entityUpdate: {
+        description: trimMargin`
+          |Updates an entity of a given type.
+          |
+          |The data field must contain a value for every identifier field 
+          |defined in the entity type and at least one field to be updated.
+        `,
         type: GraphQLJSONObject,
         args: {
           entityTypeCode: { type: GraphQLString },
@@ -152,6 +159,24 @@ export function schema(): GraphQLSchema {
         },
         async resolve(source, { entityTypeCode, data }, { dataDomain }) {
           return dataDomain.update(entityTypeCode, data)
+        },
+      },
+      entityDelete: {
+        description: trimMargin`
+          |Deletes an entity of a given entity type.
+          |
+          |The id object provided must define a value for every identifier field
+          |defined in the entity type. Additional fields may be provided by
+          |they are ignored.
+        `,
+        type: GraphQLJSONObject,
+        args: {
+          entityTypeCode: { type: GraphQLString },
+          id: { type: GraphQLJSONObject },
+        },
+        async resolve(source, { entityTypeCode, id }, { dataDomain }) {
+          await dataDomain.delete(entityTypeCode, id)
+          return id
         },
       },
     },
