@@ -34,6 +34,12 @@ export enum FieldType {
   TIME = 'time',
 }
 
+export type Entity = {
+  [fieldCode: string]: FieldValue
+}
+
+export type FieldValue = string | number
+
 /**
  * Data Domain inspector and cache.
  * 
@@ -81,7 +87,7 @@ export class DataDomain {
     return entityType
   }
 
-  async create(entityTypeCode: string, data: any): Promise<any> {
+  async create(entityTypeCode: string, data: Entity): Promise<Entity> {
     const et = await this.entityType(entityTypeCode)
 
     const allowed = et.fields.map(f => f.code)
@@ -118,7 +124,7 @@ export class DataDomain {
    */
   async read(
     entityTypeCode: string, { ids, limit }: ReadOptions = {},
-  ): Promise<any[]> {
+  ): Promise<Entity[]> {
     const et = await this.entityType(entityTypeCode)
 
     const select = new Select().from(et.table)
@@ -137,7 +143,7 @@ export class DataDomain {
       return Object.values(et.fields).reduce((acc, f) => {
         acc[f.code] = r[f.column]
         return acc
-      }, {} as any)
+      }, {} as Entity)
     })
   }
 
@@ -146,7 +152,7 @@ export class DataDomain {
    * The provided data must define the ids to the target entity and one or more
    * non-id fields to be updated.
    */
-  async update(entityTypeCode: string, data: any) {
+  async update(entityTypeCode: string, data: Entity) {
     const et = await this.entityType(entityTypeCode)
 
     const update = new Update().table(et.table)
@@ -183,7 +189,7 @@ export class DataDomain {
    * identifier fields defined in the entity type. Any non-id field provided
    * will be ignored.
    */
-  async delete(entityTypeCode: string, ids: any) {
+  async delete(entityTypeCode: string, ids: Entity) {
     const et = await this.entityType(entityTypeCode)
 
     const del = new Delete().table(et.table)
@@ -317,10 +323,10 @@ export class DataDomain {
           column: f.column,
           placeholder: f.placeholder,
           type: f.type,
-          identifier: f.identifier,
-          hidden: f.hidden,
-          mandatory: f.mandatory,
-          generated: false,
+          identifier: f.identifier === 1,
+          hidden: f.hidden === 1,
+          mandatory: f.mandatory === 1,
+          generated: f.generated === 1,
         })
       }
     }))
@@ -342,7 +348,7 @@ export class DataDomain {
 }
 
 type ReadOptions = {
-  ids?: { [fCode: string]: any },
+  ids?: Entity,
   limit?: number,
 }
 

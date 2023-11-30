@@ -21,7 +21,7 @@ export function toCapitalizedSpaced(s: string) {
  * Returns `plural` otherwise.
  */
 export function pluralize(
-  list: any[], singular: string, plural: string,
+  list: unknown[], singular: string, plural: string,
 ): string {
   return list.length === 1 ? singular : plural
 }
